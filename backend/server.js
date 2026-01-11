@@ -11,6 +11,7 @@ dotenv.config();
 connectDB();
 
 const app = express();
+const PORT = process.env.PORT || 5000;
 
 /* ✅ BODY PARSER (THIS FIXES YOUR ISSUE) */
 app.use(express.json());
@@ -21,8 +22,11 @@ app.use(cors({
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
-    // Allow localhost on any port for development
-    if (origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:")) {
+    if (
+      origin.startsWith("http://localhost:") ||
+      origin.startsWith("http://127.0.0.1:") ||
+      origin === "https://your-vercel-app.vercel.app"
+    ) {
       return callback(null, true);
     }
     
@@ -35,11 +39,11 @@ app.use(cors({
 }));
 
 /* DEBUG — KEEP THIS FOR NOW */
-app.use((req, res, next) => {
-  console.log("HEADERS:", req.headers["content-type"]);
-  console.log("BODY:", req.body);
-  next();
-});
+//app.use((req, res, next) => {
+//  console.log("HEADERS:", req.headers["content-type"]);
+//  console.log("BODY:", req.body);
+//  next();
+//});
 
 app.use("/api/auth", authRoutes);
 app.use("/api/leads", leadRoutes);
@@ -49,6 +53,6 @@ app.get("/", (req, res) => {
   res.send("ClientScout API running 🚀");
 });
 
-app.listen(5000, () => {
-  console.log("✅ Server running on port 5000");
+app.listen(PORT, () => {
+  console.log(`✅ Server running on port ${PORT}`);
 });
