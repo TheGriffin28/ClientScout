@@ -6,6 +6,7 @@ import Input from "../form/input/InputField";
 import Checkbox from "../form/input/Checkbox";
 import Button from "../ui/button/Button";
 import axios from "axios";
+import api from "../../services/api";
 import { useUser } from "../../context/UserContext";
 
 export default function SignInForm() {
@@ -22,13 +23,7 @@ export default function SignInForm() {
     e.preventDefault();
     setError(""); // Clear previous errors
     try {
-      const response = await axios.post(
-        "http://localhost:5000/api/auth/login",
-        { email, password },
-        {
-          withCredentials: true, // Important for cookies
-        }
-      );
+      const response = await api.post("/auth/login", { email, password });
       console.log("Full backend response:", response);
       console.log("Login successful", response.data);
       // Store token and redirect to dashboard
