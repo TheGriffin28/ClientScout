@@ -14,6 +14,8 @@ export default function Home() {
   const [statusData, setStatusData] = useState({ New: 0, Contacted: 0, FollowUp: 0, Interested: 0, Converted: 0, Lost: 0 });
   const [followUpData, setFollowUpData] = useState({ Overdue: 0, Today: 0, Upcoming: 0 });
   const [activityData, setActivityData] = useState<{ categories: string[], series: { name: string, data: number[] }[] }>({ categories: [], series: [] });
+  const [leadsAnalyzed, setLeadsAnalyzed] = useState(0);
+  const [avgLeadScore, setAvgLeadScore] = useState(0);
 
   useEffect(() => {
     fetchData();
@@ -33,12 +35,25 @@ export default function Home() {
   const processData = (data: Lead[]) => {
     // 1. Status Breakdown
     const statuses: any = { New: 0, Contacted: 0, FollowUp: 0, Interested: 0, Converted: 0, Lost: 0 };
+    let analyzedCount = 0;
+    let totalLeadScore = 0;
+    let scoredLeadCount = 0;
+
     data.forEach(lead => {
       if (statuses[lead.status] !== undefined) {
         statuses[lead.status]++;
       }
+      if (lead.aiSummary || lead.leadScore) {
+        analyzedCount++;
+      }
+      if (lead.leadScore) {
+        totalLeadScore += lead.leadScore;
+        scoredLeadCount++;
+      }
     });
     setStatusData(statuses);
+    setLeadsAnalyzed(analyzedCount);
+    setAvgLeadScore(scoredLeadCount > 0 ? parseFloat((totalLeadScore / scoredLeadCount).toFixed(1)) : 0);
 
     // 2. Follow-ups Timeline
     const followUps = { Overdue: 0, Today: 0, Upcoming: 0 };
@@ -179,6 +194,27 @@ export default function Home() {
             trend="Due today"
             trendUp={false}
           />
+          <CardDataStats 
+            title="Leads Analyzed" 
+            total={leadsAnalyzed.toString()} 
+            type="analyzed"
+            trend="AI Insights"
+            trendUp={true}
+          />
+          <CardDataStats 
+            title="Avg Lead Score" 
+            total={avgLeadScore.toString()} 
+            type="score"
+            trend="Out of 5"
+            trendUp={true}
+          />
+          <CardDataStats 
+            title="Contacted Leads" 
+            total={statusData.Contacted.toString()} 
+            type="contacted_count"
+            trend="Total outreach"
+            trendUp={true}
+          />
         </div>
 
         {/* Charts Grid */}
@@ -206,6 +242,15 @@ const CardDataStats = ({ title, total, type, trend, trendUp }: { title: string; 
   } else if (type === 'followup') {
     Icon = FiClock;
     colorClass = "text-orange-500 bg-orange-500/10";
+  } else if (type === 'analyzed') {
+    Icon = FiTrendingUp; // Using FiTrendingUp for AI insights
+    colorClass = "text-purple-500 bg-purple-500/10";
+  } else if (type === 'score') {
+    Icon = FiTrendingUp; // Using FiTrendingUp for score
+    colorClass = "text-pink-500 bg-pink-500/10";
+  } else if (type === 'contacted_count') {
+    Icon = FiPhoneCall; // Reusing FiPhoneCall for contacted count
+    colorClass = "text-blue-500 bg-blue-500/10";
   }
 
   return (

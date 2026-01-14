@@ -7,7 +7,11 @@ import {
   deleteLead,
   updateLeadStatus,
   leadStats,
-  getFollowUps
+  getFollowUps,
+  analyzeLead,
+  generateEmail,
+  generateWhatsApp,
+  logContact
 } from "../controllers/leadController.js";
 
 import { protect } from "../middleware/authMiddleware.js";
@@ -22,6 +26,10 @@ router.route("/")
 router.get("/stats", protect, leadStats);
 router.get("/followups", protect, getFollowUps);
 router.put("/:id/status", protect, updateLeadStatus);
+router.post("/:id/analyze", protect, analyzeLead);
+router.post("/:id/generate-email", protect, generateEmail);
+router.post("/:id/generate-whatsapp", protect, generateWhatsApp);
+router.post("/:id/log-contact", protect, logContact);
 
 router.route("/:id")
   .get(protect, getLeadById)

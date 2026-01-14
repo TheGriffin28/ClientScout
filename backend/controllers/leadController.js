@@ -1,5 +1,6 @@
 import Lead from "../models/Lead.js";
 import mongoose from "mongoose";
+import { analyzeWebsite } from "../services/aiService.js";
 
 /* CREATE LEAD */
 export const createLead = async (req, res) => {
@@ -108,12 +109,25 @@ export const updateLeadStatus = async (req, res) => {
 };
 
 export const leadStats = async (req, res) => {
-  const stats = await Lead.aggregate([
-    { $match: { user: req.user._id } },
-    { $group: { _id: "$status", count: { $sum: 1 } } },
-  ]);
+  try {
+    const stats = await Lead.aggregate([
+      { $match: { user: req.user._id } },
+      { $group: { _id: "$status", count: { $sum: 1 } } },
+    ]);
 
-  res.json(stats);
+    // Calculate overdue follow-ups
+    const today = new Date();
+    const overdueCount = await Lead.countDocuments({
+      user: req.user._id,
+      nextFollowUp: { $lt: today },
+      status: { $nin: ["Converted", "Lost", "Contacted"] } // Assuming 'Contacted' might clear it, or maybe strictly overdue
+    });
+
+    res.json({ stats, overdueCount });
+  } catch (error) {
+    console.error("Stats error:", error);
+    res.status(500).json({ message: "Error fetching stats" });
+  }
 };
 
 /* GET FOLLOW-UPS (LEADS WITH nextFollowUp DATE) */
@@ -141,5 +155,152 @@ export const getFollowUps = async (req, res) => {
   } catch (error) {
     console.error("Error fetching follow-ups:", error);
     res.status(500).json({ message: "Error fetching follow-ups", error: error.message });
+  }
+};
+
+/* ANALYZE LEAD (REAL AI) */
+export const analyzeLead = async (req, res) => {
+  // Validate ObjectId format
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    return res.status(400).json({ message: "Invalid lead ID format" });
+  }
+
+  const lead = await Lead.findById(req.params.id);
+
+  if (!lead) {
+    return res.status(404).json({ message: "Lead not found" });
+  }
+
+  if (lead.user.toString() !== req.user._id.toString()) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  try {
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(500).json({ message: "Gemini API key not configured" });
+    }
+
+    // Call Gemini Service
+    const aiResult = await analyzeWebsite(lead.website || "", lead.businessName);
+
+    // Map AI result to DB schema
+    const updates = {
+      industry: aiResult.industry,
+      painPoints: aiResult.weaknesses, // Mapping weaknesses to painPoints
+      aiSummary: `${aiResult.pitch} (Business Type: ${aiResult.businessType})`, // Combining pitch and type
+      leadScore: aiResult.score,
+      aiGeneratedAt: new Date()
+    };
+
+    const updatedLead = await Lead.findByIdAndUpdate(
+      req.params.id,
+      updates,
+      { new: true }
+    );
+
+    res.json(updatedLead);
+  } catch (error) {
+    console.error("Analysis failed:", error);
+    res.status(500).json({ message: "AI Analysis failed", error: error.message });
+  }
+};
+
+/* LOG CONTACT & SUGGEST FOLLOW-UP */
+export const logContact = async (req, res) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    return res.status(400).json({ message: "Invalid lead ID format" });
+  }
+
+  const lead = await Lead.findById(req.params.id);
+
+  if (!lead || lead.user.toString() !== req.user._id.toString()) {
+    return res.status(404).json({ message: "Lead not found" });
+  }
+
+  try {
+    const today = new Date();
+    lead.lastContactedAt = today;
+    lead.status = "Contacted";
+
+    // Simple rule-based suggestion: +3 days for standard leads
+    // Could be enhanced with AI or industry-specific logic later
+    const nextDate = new Date();
+    nextDate.setDate(today.getDate() + 3);
+    lead.nextFollowUp = nextDate;
+
+    await lead.save();
+    res.json(lead);
+  } catch (error) {
+    console.error("Log contact failed:", error);
+    res.status(500).json({ message: "Failed to log contact", error: error.message });
+  }
+};
+
+/* GENERATE EMAIL DRAFT */
+export const generateEmail = async (req, res) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    return res.status(400).json({ message: "Invalid lead ID format" });
+  }
+
+  const lead = await Lead.findById(req.params.id);
+
+  if (!lead || lead.user.toString() !== req.user._id.toString()) {
+    return res.status(404).json({ message: "Lead not found" });
+  }
+
+  try {
+    const { generateEmailDraft } = await import("../services/aiService.js");
+    const emailDraft = await generateEmailDraft(
+      lead.businessName,
+      lead.industry,
+      lead.contactName,
+      lead.painPoints,
+      lead.aiSummary
+    );
+
+    lead.emailDraft = {
+      subject: emailDraft.subject,
+      body: emailDraft.body,
+      generatedAt: new Date()
+    };
+    await lead.save();
+
+    res.json(lead);
+  } catch (error) {
+    console.error("Email generation failed:", error);
+    res.status(500).json({ message: "Failed to generate email", error: error.message });
+  }
+};
+
+/* GENERATE WHATSAPP DRAFT */
+export const generateWhatsApp = async (req, res) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    return res.status(400).json({ message: "Invalid lead ID format" });
+  }
+
+  const lead = await Lead.findById(req.params.id);
+
+  if (!lead || lead.user.toString() !== req.user._id.toString()) {
+    return res.status(404).json({ message: "Lead not found" });
+  }
+
+  try {
+    const { generateWhatsAppDraft } = await import("../services/aiService.js");
+    const whatsappMsg = await generateWhatsAppDraft(
+      lead.businessName,
+      lead.contactName,
+      lead.painPoints
+    );
+
+    lead.whatsappDraft = {
+      body: whatsappMsg,
+      generatedAt: new Date()
+    };
+    await lead.save();
+
+    res.json(lead);
+  } catch (error) {
+    console.error("WhatsApp generation failed:", error);
+    res.status(500).json({ message: "Failed to generate WhatsApp message", error: error.message });
   }
 };

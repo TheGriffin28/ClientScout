@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getLeadById, updateLead, Lead } from "../services/leadService";
+import { getLeadById, updateLead, analyzeLead, generateEmailDraft, generateWhatsAppDraft, logContact, Lead } from "../services/leadService";
 import StatusBadge from "../components/common/StatusBadge";
-import { FaEnvelope, FaWhatsapp, FaPhoneAlt } from "react-icons/fa";
+import { FaEnvelope, FaWhatsapp, FaPhoneAlt, FaMagic, FaCopy, FaCheckCircle, FaCalendarPlus } from "react-icons/fa";
 import { openEmail, openWhatsApp, openCall } from "../services/outreachService";
 
 const LeadDetail = () => {
@@ -10,6 +10,9 @@ const LeadDetail = () => {
   const navigate = useNavigate();
   const [lead, setLead] = useState<Lead | null>(null);
   const [loading, setLoading] = useState(true);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [generatingEmail, setGeneratingEmail] = useState(false);
+  const [generatingWhatsApp, setGeneratingWhatsApp] = useState(false);
   const [notes, setNotes] = useState("");
   const [isEditingNotes, setIsEditingNotes] = useState(false);
 
@@ -44,6 +47,65 @@ const LeadDetail = () => {
       console.error("Error saving notes:", error);
       alert("Error saving notes. Please try again.");
     }
+  };
+
+  const handleAnalyze = async () => {
+    if (!id) return;
+    try {
+      setAnalyzing(true);
+      const updatedLead = await analyzeLead(id);
+      setLead(updatedLead);
+    } catch (error) {
+      console.error("Error analyzing lead:", error);
+      alert("Error analyzing lead. Please try again.");
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  const handleGenerateEmail = async () => {
+    if (!id) return;
+    try {
+      setGeneratingEmail(true);
+      const updatedLead = await generateEmailDraft(id);
+      setLead(updatedLead);
+    } catch (error) {
+      console.error("Error generating email:", error);
+      alert("Error generating email draft.");
+    } finally {
+      setGeneratingEmail(false);
+    }
+  };
+
+  const handleGenerateWhatsApp = async () => {
+    if (!id) return;
+    try {
+      setGeneratingWhatsApp(true);
+      const updatedLead = await generateWhatsAppDraft(id);
+      setLead(updatedLead);
+    } catch (error) {
+      console.error("Error generating WhatsApp:", error);
+      alert("Error generating WhatsApp draft.");
+    } finally {
+      setGeneratingWhatsApp(false);
+    }
+  };
+
+  const handleLogContact = async () => {
+    if (!id) return;
+    try {
+      const updatedLead = await logContact(id);
+      setLead(updatedLead);
+      alert("Contact logged! Next follow-up set for 3 days.");
+    } catch (error) {
+      console.error("Error logging contact:", error);
+      alert("Error logging contact.");
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    alert("Copied to clipboard!");
   };
 
   const formatDate = (dateString: string | undefined): string => {
@@ -108,20 +170,48 @@ const LeadDetail = () => {
         </button>
       </div>
 
-      <div className="mb-6 flex items-center gap-4">
+      <div className="mb-6 flex items-center gap-4 flex-wrap">
         <StatusBadge status={lead.status} />
+        {lead.scoreCategory && (
+          <span className={`text-sm font-semibold px-3 py-1 rounded-full ${
+            lead.scoreCategory === "Hot" ? "bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100" :
+            lead.scoreCategory === "Warm" ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100" :
+            "bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100"
+          }`}>
+            {lead.scoreCategory}
+          </span>
+        )}
         <span className="text-sm text-gray-500 dark:text-gray-400">
           Last updated: {getTimeAgo(lead.updatedAt)}
         </span>
+        {lead.lastContactedAt && (
+           <span className="text-sm text-blue-600 dark:text-blue-400 flex items-center gap-1">
+             <FaCheckCircle className="text-xs" /> Last Contact: {formatDate(lead.lastContactedAt)}
+           </span>
+        )}
         {lead.nextFollowUp && (
-          <span className="text-sm text-orange-600 dark:text-orange-400">
-            Next follow-up: {formatDate(lead.nextFollowUp)}
+          <span className={`text-sm flex items-center gap-1 ${
+            new Date(lead.nextFollowUp) < new Date() 
+            ? 'text-red-600 font-bold animate-pulse' 
+            : 'text-orange-600 dark:text-orange-400'
+          }`}>
+            <FaCalendarPlus className="text-xs" />
+            {new Date(lead.nextFollowUp) < new Date() ? "Overdue Follow-up: " : "Next Follow-up: "} 
+            {formatDate(lead.nextFollowUp)}
           </span>
         )}
       </div>
 
       {/* Primary Action Buttons */}
       <div className="mb-6 flex flex-wrap gap-3">
+        <button
+          onClick={handleLogContact}
+          className="flex items-center gap-2 rounded-lg bg-gray-800 px-6 py-3 text-white hover:bg-gray-900 transition-colors shadow-md hover:shadow-lg dark:bg-gray-700 dark:hover:bg-gray-600"
+        >
+          <FaCheckCircle className="w-5 h-5" />
+          <span className="font-medium">Log Contact</span>
+        </button>
+
         {lead.email && (
           <button
             onClick={() => openEmail({ lead })}
@@ -154,6 +244,136 @@ const LeadDetail = () => {
             No contact information available for outreach
           </p>
         )}
+      </div>
+
+      {/* AI Insights Card */}
+      <div className="mb-6 rounded-xl bg-white p-5 shadow dark:bg-boxdark">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-white flex items-center gap-2">
+            <FaMagic className="text-purple-600" />
+            AI Insights & Outreach
+          </h3>
+          <button
+            onClick={handleAnalyze}
+            disabled={analyzing}
+            className={`rounded px-4 py-2 text-sm text-white transition-colors ${
+              analyzing ? 'bg-purple-400 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700'
+            }`}
+          >
+            {analyzing ? "Analyzing..." : "Analyze with AI"}
+          </button>
+        </div>
+        
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Industry</p>
+              <p className="text-gray-800 dark:text-white font-medium">{lead.industry || "Not identified"}</p>
+            </div>
+            
+            <div>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Lead Score</p>
+              <div className="flex items-center gap-2">
+                <span className={`text-lg font-bold ${lead.leadScore ? 'text-purple-600 dark:text-purple-400' : 'text-gray-400'}`}>
+                  {lead.leadScore || "-"}
+                </span>
+                <span className="text-sm text-gray-500">/ 5</span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">AI Summary & Pitch</p>
+            <p className="text-gray-800 dark:text-white bg-gray-50 dark:bg-gray-700 p-3 rounded-lg text-sm leading-relaxed">
+              {lead.aiSummary || "No AI summary available yet."}
+            </p>
+          </div>
+
+          <div>
+            <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Pain Points</p>
+            {lead.painPoints && lead.painPoints.length > 0 ? (
+              <ul className="list-disc list-inside text-gray-800 dark:text-white">
+                {lead.painPoints.map((point, index) => (
+                  <li key={index}>{point}</li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-gray-500 italic text-sm">No pain points identified yet.</p>
+            )}
+          </div>
+
+          <hr className="border-gray-200 dark:border-gray-700" />
+
+          {/* Email Draft Section */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
+                <FaEnvelope className="text-blue-600" /> AI Email Draft
+              </h4>
+              <button
+                onClick={handleGenerateEmail}
+                disabled={generatingEmail}
+                className="text-sm text-blue-600 hover:underline dark:text-blue-400 disabled:opacity-50"
+              >
+                {generatingEmail ? "Generating..." : (lead.emailDraft ? "Regenerate" : "Generate Draft")}
+              </button>
+            </div>
+            
+            {lead.emailDraft ? (
+              <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
+                <div className="mb-2 flex justify-between items-start">
+                  <div>
+                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Subject</span>
+                    <p className="text-gray-800 dark:text-white font-medium mb-2">{lead.emailDraft.subject}</p>
+                  </div>
+                  <button onClick={() => copyToClipboard(lead.emailDraft!.subject)} className="text-gray-400 hover:text-gray-600">
+                    <FaCopy />
+                  </button>
+                </div>
+                <div className="relative">
+                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">Body</span>
+                  <p className="text-gray-700 dark:text-gray-300 text-sm whitespace-pre-wrap">{lead.emailDraft.body}</p>
+                  <button onClick={() => copyToClipboard(lead.emailDraft!.body)} className="absolute top-0 right-0 text-gray-400 hover:text-gray-600">
+                    <FaCopy />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-dashed border-gray-300">
+                <p className="text-gray-500 text-sm">No email draft generated yet.</p>
+              </div>
+            )}
+          </div>
+
+          {/* WhatsApp Draft Section */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
+                <FaWhatsapp className="text-green-600" /> AI WhatsApp Draft
+              </h4>
+              <button
+                onClick={handleGenerateWhatsApp}
+                disabled={generatingWhatsApp}
+                className="text-sm text-green-600 hover:underline dark:text-green-400 disabled:opacity-50"
+              >
+                {generatingWhatsApp ? "Generating..." : (lead.whatsappDraft ? "Regenerate" : "Generate Draft")}
+              </button>
+            </div>
+            
+            {lead.whatsappDraft ? (
+              <div className="bg-green-50 dark:bg-gray-700 p-4 rounded-lg border border-green-200 dark:border-gray-600 relative">
+                <p className="text-gray-800 dark:text-white text-sm whitespace-pre-wrap">{lead.whatsappDraft.body}</p>
+                <button onClick={() => copyToClipboard(lead.whatsappDraft!.body)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                  <FaCopy />
+                </button>
+              </div>
+            ) : (
+              <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-dashed border-gray-300">
+                <p className="text-gray-500 text-sm">No WhatsApp draft generated yet.</p>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Info Card */}

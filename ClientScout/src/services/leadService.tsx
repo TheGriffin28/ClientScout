@@ -7,8 +7,25 @@ export interface Lead {
   email?: string;
   phone?: string;
   website?: string;
+  industry?: string;
+  painPoints?: string[];
+  aiSummary?: string;
+  leadScore?: number;
+  aiGeneratedAt?: string;
+  emailDraft?: {
+    subject: string;
+    body: string;
+    generatedAt: string;
+  };
+  whatsappDraft?: {
+    body: string;
+    generatedAt: string;
+  };
+  lastContactedAt?: string;
   source?: string;
   status: "New" | "Contacted" | "FollowUp" | "Interested" | "Converted" | "Lost";
+  calculatedScore?: number;
+  scoreCategory?: "Hot" | "Warm" | "Cold";
   notes?: string;
   nextFollowUp?: string;
   createdAt: string;
@@ -21,6 +38,11 @@ export interface LeadFormData {
   email?: string;
   phone?: string;
   website?: string;
+  industry?: string;
+  painPoints?: string[];
+  aiSummary?: string;
+  leadScore?: number;
+  aiGeneratedAt?: string;
   source?: string;
   status: "New" | "Contacted" | "FollowUp" | "Interested" | "Converted" | "Lost";
   notes?: string;
@@ -63,5 +85,30 @@ export const getLeadStats = async () => {
 
 export const getFollowUps = async (): Promise<Lead[]> => {
   const res = await api.get("/leads/followups");
+  return res.data;
+};
+
+export const analyzeLead = async (id: string): Promise<Lead> => {
+  const res = await api.post(`/leads/${id}/analyze`);
+  return res.data;
+};
+
+export const generateEmailDraft = async (id: string): Promise<Lead> => {
+  const res = await api.post(`/leads/${id}/generate-email`);
+  return res.data;
+};
+
+export const generateWhatsAppDraft = async (id: string): Promise<Lead> => {
+  const res = await api.post(`/leads/${id}/generate-whatsapp`);
+  return res.data;
+};
+
+export const logContact = async (id: string): Promise<Lead> => {
+  const res = await api.post(`/leads/${id}/log-contact`);
+  return res.data;
+};
+
+export const getDashboardStats = async () => {
+  const res = await api.get("/leads/stats");
   return res.data;
 };

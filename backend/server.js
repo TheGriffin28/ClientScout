@@ -5,10 +5,12 @@ import cookieParser from "cookie-parser";
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import leadRoutes from "./routes/leadRoutes.js";
+import { setupCronJobs } from "./cron/followUpCron.js";
 
 
 dotenv.config();
 connectDB();
+setupCronJobs();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
