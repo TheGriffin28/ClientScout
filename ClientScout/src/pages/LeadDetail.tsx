@@ -134,50 +134,65 @@ const LeadDetail = () => {
 
   if (loading) {
     return (
-      <div className="p-6 max-w-4xl">
-        <p className="text-center text-gray-600 dark:text-gray-300">
-          Loading lead details...
-        </p>
+      <div className="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-8">
+        <div className="rounded-xl bg-white p-6 text-center shadow-md dark:bg-white/[0.03]">
+          <p className="text-gray-600 dark:text-gray-300">Loading lead details...</p>
+        </div>
       </div>
     );
   }
 
   if (!lead) {
     return (
-      <div className="p-6 max-w-4xl">
-        <p className="text-center text-red-600">Lead not found</p>
-        <button
-          onClick={() => navigate("/leads")}
-          className="mt-4 rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-        >
-          Back to Leads
-        </button>
+      <div className="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-8">
+        <div className="rounded-xl bg-white p-6 shadow-md dark:bg-white/[0.03]">
+          <p className="text-center text-red-600">Lead not found</p>
+          <button
+            onClick={() => navigate("/leads")}
+            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
+          >
+            <span>←</span>
+            <span>Back to Leads</span>
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 max-w-4xl">
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-gray-800 dark:text-white">
-          {lead.businessName}
-        </h1>
-        <button
-          onClick={() => navigate("/leads")}
-          className="rounded bg-gray-200 px-4 py-2 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
-        >
-          ← Back
-        </button>
+    <div className="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-8">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-800 dark:text-white sm:text-3xl">
+            {lead.businessName}
+          </h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Detailed view with AI insights and contact history.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={() => navigate("/leads")}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-white/[0.04]"
+          >
+            <span>←</span>
+            <span>Back to Leads</span>
+          </button>
+        </div>
       </div>
 
-      <div className="mb-6 flex items-center gap-4 flex-wrap">
+      <div className="mb-6 flex flex-wrap items-center gap-3">
         <StatusBadge status={lead.status} />
         {lead.scoreCategory && (
-          <span className={`text-sm font-semibold px-3 py-1 rounded-full ${
-            lead.scoreCategory === "Hot" ? "bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100" :
-            lead.scoreCategory === "Warm" ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100" :
-            "bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100"
-          }`}>
+          <span
+            className={`rounded-full px-3 py-1 text-sm font-semibold ${
+              lead.scoreCategory === "Hot"
+                ? "bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100"
+                : lead.scoreCategory === "Warm"
+                ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100"
+                : "bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100"
+            }`}
+          >
             {lead.scoreCategory}
           </span>
         )}
@@ -185,313 +200,411 @@ const LeadDetail = () => {
           Last updated: {getTimeAgo(lead.updatedAt)}
         </span>
         {lead.lastContactedAt && (
-           <span className="text-sm text-blue-600 dark:text-blue-400 flex items-center gap-1">
-             <FaCheckCircle className="text-xs" /> Last Contact: {formatDate(lead.lastContactedAt)}
-           </span>
+          <span className="flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400">
+            <FaCheckCircle className="text-xs" /> Last Contact:{" "}
+            {formatDate(lead.lastContactedAt)}
+          </span>
         )}
         {lead.nextFollowUp && (
-          <span className={`text-sm flex items-center gap-1 ${
-            new Date(lead.nextFollowUp) < new Date() 
-            ? 'text-red-600 font-bold animate-pulse' 
-            : 'text-orange-600 dark:text-orange-400'
-          }`}>
+          <span
+            className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${
+              new Date(lead.nextFollowUp) < new Date()
+                ? "bg-red-50 text-red-700 dark:bg-red-900/40 dark:text-red-200"
+                : "bg-orange-50 text-orange-700 dark:bg-orange-900/40 dark:text-orange-200"
+            }`}
+          >
             <FaCalendarPlus className="text-xs" />
-            {new Date(lead.nextFollowUp) < new Date() ? "Overdue Follow-up: " : "Next Follow-up: "} 
-            {formatDate(lead.nextFollowUp)}
+            <span>
+              {new Date(lead.nextFollowUp) < new Date()
+                ? "Overdue Follow-up: "
+                : "Next Follow-up: "}
+              {formatDate(lead.nextFollowUp)}
+            </span>
           </span>
         )}
       </div>
 
-      {/* Primary Action Buttons */}
       <div className="mb-6 flex flex-wrap gap-3">
         <button
           onClick={handleLogContact}
-          className="flex items-center gap-2 rounded-lg bg-gray-800 px-6 py-3 text-white hover:bg-gray-900 transition-colors shadow-md hover:shadow-lg dark:bg-gray-700 dark:hover:bg-gray-600"
+          className="flex items-center gap-2 rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-black/80 dark:bg-gray-700 dark:hover:bg-gray-600"
         >
-          <FaCheckCircle className="w-5 h-5" />
+          <FaCheckCircle className="h-5 w-5" />
           <span className="font-medium">Log Contact</span>
         </button>
 
         {lead.email && (
           <button
             onClick={() => openEmail({ lead })}
-            className="flex items-center gap-2 rounded-lg bg-blue-600 px-6 py-3 text-white hover:bg-blue-700 transition-colors shadow-md hover:shadow-lg"
+            className="flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700"
           >
-            <FaEnvelope className="w-5 h-5" />
+            <FaEnvelope className="h-5 w-5" />
             <span className="font-medium">Send Email</span>
           </button>
         )}
+
         {lead.phone && (
           <>
             <button
               onClick={() => openWhatsApp({ lead })}
-              className="flex items-center gap-2 rounded-lg bg-green-600 px-6 py-3 text-white hover:bg-green-700 transition-colors shadow-md hover:shadow-lg"
+              className="flex items-center gap-2 rounded-lg bg-green-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-green-700"
             >
-              <FaWhatsapp className="w-5 h-5" />
-              <span className="font-medium">Send WhatsApp</span>
+              <FaWhatsapp className="h-5 w-5" />
+              <span>Send WhatsApp</span>
             </button>
             <button
               onClick={() => openCall(lead.phone!)}
-              className="flex items-center gap-2 rounded-lg bg-gray-700 px-6 py-3 text-white hover:bg-gray-800 transition-colors shadow-md hover:shadow-lg dark:bg-gray-600 dark:hover:bg-gray-700"
+              className="flex items-center gap-2 rounded-lg bg-gray-700 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-gray-800 dark:bg-gray-600 dark:hover:bg-gray-700"
             >
-              <FaPhoneAlt className="w-5 h-5" />
-              <span className="font-medium">Call Now</span>
+              <FaPhoneAlt className="h-5 w-5" />
+              <span>Call Now</span>
             </button>
           </>
         )}
+
         {!lead.email && !lead.phone && (
-          <p className="text-gray-500 dark:text-gray-400 text-sm">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
             No contact information available for outreach
           </p>
         )}
       </div>
 
-      {/* AI Insights Card */}
-      <div className="mb-6 rounded-xl bg-white p-5 shadow dark:bg-boxdark">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-800 dark:text-white flex items-center gap-2">
-            <FaMagic className="text-purple-600" />
-            AI Insights & Outreach
-          </h3>
-          <button
-            onClick={handleAnalyze}
-            disabled={analyzing}
-            className={`rounded px-4 py-2 text-sm text-white transition-colors ${
-              analyzing ? 'bg-purple-400 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700'
-            }`}
-          >
-            {analyzing ? "Analyzing..." : "Analyze with AI"}
-          </button>
-        </div>
-        
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Industry</p>
-              <p className="text-gray-800 dark:text-white font-medium">{lead.industry || "Not identified"}</p>
-            </div>
-            
-            <div>
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Lead Score</p>
-              <div className="flex items-center gap-2">
-                <span className={`text-lg font-bold ${lead.leadScore ? 'text-purple-600 dark:text-purple-400' : 'text-gray-400'}`}>
-                  {lead.leadScore || "-"}
-                </span>
-                <span className="text-sm text-gray-500">/ 5</span>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">AI Summary & Pitch</p>
-            <p className="text-gray-800 dark:text-white bg-gray-50 dark:bg-gray-700 p-3 rounded-lg text-sm leading-relaxed">
-              {lead.aiSummary || "No AI summary available yet."}
-            </p>
-          </div>
-
-          <div>
-            <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Pain Points</p>
-            {lead.painPoints && lead.painPoints.length > 0 ? (
-              <ul className="list-disc list-inside text-gray-800 dark:text-white">
-                {lead.painPoints.map((point, index) => (
-                  <li key={index}>{point}</li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-gray-500 italic text-sm">No pain points identified yet.</p>
-            )}
-          </div>
-
-          <hr className="border-gray-200 dark:border-gray-700" />
-
-          {/* Email Draft Section */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
-                <FaEnvelope className="text-blue-600" /> AI Email Draft
-              </h4>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="order-2 space-y-6 lg:order-1 lg:col-span-2">
+          <div className="rounded-xl bg-white p-5 shadow dark:bg-white/[0.03]">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-800 dark:text-white">
+                <FaMagic className="text-purple-600" />
+                AI Insights & Outreach
+              </h3>
               <button
-                onClick={handleGenerateEmail}
-                disabled={generatingEmail}
-                className="text-sm text-blue-600 hover:underline dark:text-blue-400 disabled:opacity-50"
+                onClick={handleAnalyze}
+                disabled={analyzing}
+                className={`rounded px-4 py-2 text-sm text-white transition-colors ${
+                  analyzing
+                    ? "cursor-not-allowed bg-purple-400"
+                    : "bg-purple-600 hover:bg-purple-700"
+                }`}
               >
-                {generatingEmail ? "Generating..." : (lead.emailDraft ? "Regenerate" : "Generate Draft")}
+                {analyzing ? "Analyzing..." : "Analyze with AI"}
               </button>
             </div>
-            
-            {lead.emailDraft ? (
-              <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
-                <div className="mb-2 flex justify-between items-start">
-                  <div>
-                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wide">Subject</span>
-                    <p className="text-gray-800 dark:text-white font-medium mb-2">{lead.emailDraft.subject}</p>
+
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    Industry
+                  </p>
+                  <p className="font-medium text-gray-800 dark:text-white">
+                    {lead.industry || "Not identified"}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    Lead Score
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`text-lg font-bold ${
+                        lead.leadScore
+                          ? "text-purple-600 dark:text-purple-400"
+                          : "text-gray-400"
+                      }`}
+                    >
+                      {lead.leadScore || "-"}
+                    </span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                      / 5
+                    </span>
                   </div>
-                  <button onClick={() => copyToClipboard(lead.emailDraft!.subject)} className="text-gray-400 hover:text-gray-600">
-                    <FaCopy />
-                  </button>
-                </div>
-                <div className="relative">
-                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">Body</span>
-                  <p className="text-gray-700 dark:text-gray-300 text-sm whitespace-pre-wrap">{lead.emailDraft.body}</p>
-                  <button onClick={() => copyToClipboard(lead.emailDraft!.body)} className="absolute top-0 right-0 text-gray-400 hover:text-gray-600">
-                    <FaCopy />
-                  </button>
                 </div>
               </div>
-            ) : (
-              <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-dashed border-gray-300">
-                <p className="text-gray-500 text-sm">No email draft generated yet.</p>
+
+              <div className="space-y-2">
+                <p className="mb-2 text-sm font-medium text-gray-500 dark:text-gray-400">
+                  AI Summary & Pitch
+                </p>
+                <p className="rounded-lg bg-gray-50 p-3 text-sm leading-relaxed text-gray-800 dark:bg-gray-700 dark:text-white">
+                  {lead.aiSummary || "No AI summary available yet."}
+                </p>
               </div>
-            )}
+
+              <div className="space-y-2">
+                <p className="mb-2 text-sm font-medium text-gray-500 dark:text-gray-400">
+                  Pain Points
+                </p>
+                {lead.painPoints && lead.painPoints.length > 0 ? (
+                  <ul className="list-inside list-disc text-gray-800 dark:text-white">
+                    {lead.painPoints.map((point, index) => (
+                      <li key={index}>{point}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm italic text-gray-500 dark:text-gray-400">
+                    No pain points identified yet.
+                  </p>
+                )}
+              </div>
+
+              <hr className="border-gray-200 dark:border-gray-700" />
+
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <h4 className="flex items-center gap-2 font-semibold text-gray-800 dark:text-white">
+                    <FaEnvelope className="text-blue-600" /> AI Email Draft
+                  </h4>
+                  <button
+                    onClick={handleGenerateEmail}
+                    disabled={generatingEmail}
+                    className="text-sm text-blue-600 hover:underline dark:text-blue-400 disabled:opacity-50"
+                  >
+                    {generatingEmail
+                      ? "Generating..."
+                      : lead.emailDraft
+                      ? "Regenerate"
+                      : "Generate Draft"}
+                  </button>
+                </div>
+
+                {lead.emailDraft ? (
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-600 dark:bg-gray-700">
+                    <div className="mb-2 flex items-start justify-between">
+                      <div>
+                        <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                          Subject
+                        </span>
+                        <p className="mb-2 font-medium text-gray-800 dark:text-white">
+                          {lead.emailDraft.subject}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() =>
+                          copyToClipboard(lead.emailDraft!.subject)
+                        }
+                        className="text-gray-400 hover:text-gray-600"
+                      >
+                        <FaCopy />
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-gray-500">
+                        Body
+                      </span>
+                      <p className="text-sm text-gray-700 whitespace-pre-wrap dark:text-gray-300">
+                        {lead.emailDraft.body}
+                      </p>
+                      <button
+                        onClick={() =>
+                          copyToClipboard(lead.emailDraft!.body)
+                        }
+                        className="absolute right-0 top-0 text-gray-400 hover:text-gray-600"
+                      >
+                        <FaCopy />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4 text-center dark:bg-gray-800">
+                    <p className="text-sm text-gray-500">
+                      No email draft generated yet.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <h4 className="flex items-center gap-2 font-semibold text-gray-800 dark:text-white">
+                    <FaWhatsapp className="text-green-600" /> AI WhatsApp Draft
+                  </h4>
+                  <button
+                    onClick={handleGenerateWhatsApp}
+                    disabled={generatingWhatsApp}
+                    className="text-sm text-green-600 hover:underline dark:text-green-400 disabled:opacity-50"
+                  >
+                    {generatingWhatsApp
+                      ? "Generating..."
+                      : lead.whatsappDraft
+                      ? "Regenerate"
+                      : "Generate Draft"}
+                  </button>
+                </div>
+
+                {lead.whatsappDraft ? (
+                  <div className="relative rounded-lg border border-green-200 bg-green-50 p-4 dark:border-gray-600 dark:bg-gray-700">
+                    <p className="text-sm text-gray-800 whitespace-pre-wrap dark:text-white">
+                      {lead.whatsappDraft.body}
+                    </p>
+                    <button
+                      onClick={() =>
+                        copyToClipboard(lead.whatsappDraft!.body)
+                      }
+                      className="absolute right-4 top-4 text-gray-400 hover:text-gray-600"
+                    >
+                      <FaCopy />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4 text-center dark:bg-gray-800">
+                    <p className="text-sm text-gray-500">
+                      No WhatsApp draft generated yet.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="order-1 space-y-6 lg:order-2">
+          <div className="rounded-xl bg-white p-5 shadow dark:bg-white/[0.03]">
+            <h3 className="mb-3 text-lg font-semibold text-gray-800 dark:text-white">
+              Contact Information
+            </h3>
+            <div className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+              {lead.contactName && (
+                <p>
+                  <span className="font-medium text-gray-500 dark:text-gray-400">
+                    Contact Name:{" "}
+                  </span>
+                  <span>{lead.contactName}</span>
+                </p>
+              )}
+              {lead.email && (
+                <p>
+                  <span className="font-medium text-gray-500 dark:text-gray-400">
+                    Email:{" "}
+                  </span>
+                  <a
+                    href={`mailto:${lead.email}`}
+                    className="text-blue-600 hover:underline dark:text-blue-400"
+                  >
+                    {lead.email}
+                  </a>
+                </p>
+              )}
+              {lead.phone && (
+                <p>
+                  <span className="font-medium text-gray-500 dark:text-gray-400">
+                    Phone:{" "}
+                  </span>
+                  <a
+                    href={`tel:${lead.phone}`}
+                    className="text-blue-600 hover:underline dark:text-blue-400"
+                  >
+                    {lead.phone}
+                  </a>
+                </p>
+              )}
+              {lead.website && (
+                <p>
+                  <span className="font-medium text-gray-500 dark:text-gray-400">
+                    Website:{" "}
+                  </span>
+                  <a
+                    href={
+                      lead.website.startsWith("http")
+                        ? lead.website
+                        : `https://${lead.website}`
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline dark:text-blue-400"
+                  >
+                    {lead.website}
+                  </a>
+                </p>
+              )}
+              {lead.source && (
+                <p>
+                  <span className="font-medium text-gray-500 dark:text-gray-400">
+                    Source:{" "}
+                  </span>
+                  <span>{lead.source}</span>
+                </p>
+              )}
+              {!lead.contactName &&
+                !lead.email &&
+                !lead.phone &&
+                !lead.website && (
+                  <p className="text-gray-500 dark:text-gray-400">
+                    No contact information available
+                  </p>
+                )}
+            </div>
           </div>
 
-          {/* WhatsApp Draft Section */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
-                <FaWhatsapp className="text-green-600" /> AI WhatsApp Draft
-              </h4>
-              <button
-                onClick={handleGenerateWhatsApp}
-                disabled={generatingWhatsApp}
-                className="text-sm text-green-600 hover:underline dark:text-green-400 disabled:opacity-50"
-              >
-                {generatingWhatsApp ? "Generating..." : (lead.whatsappDraft ? "Regenerate" : "Generate Draft")}
-              </button>
-            </div>
-            
-            {lead.whatsappDraft ? (
-              <div className="bg-green-50 dark:bg-gray-700 p-4 rounded-lg border border-green-200 dark:border-gray-600 relative">
-                <p className="text-gray-800 dark:text-white text-sm whitespace-pre-wrap">{lead.whatsappDraft.body}</p>
-                <button onClick={() => copyToClipboard(lead.whatsappDraft!.body)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
-                  <FaCopy />
+          <div className="rounded-xl bg-white p-5 shadow dark:bg-white/[0.03]">
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="font-semibold text-gray-800 dark:text-white">
+                Notes
+              </h3>
+              {!isEditingNotes && (
+                <button
+                  onClick={() => setIsEditingNotes(true)}
+                  className="text-sm text-blue-600 hover:underline dark:text-blue-400"
+                >
+                  Edit
                 </button>
+              )}
+            </div>
+            {isEditingNotes ? (
+              <div className="space-y-2">
+                <textarea
+                  value={notes}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                    setNotes(e.target.value)
+                  }
+                  className="w-full rounded border p-3 dark:bg-gray-800 dark:text-white"
+                  rows={4}
+                  placeholder="Add notes about this lead..."
+                />
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={() => {
+                      setIsEditingNotes(false);
+                      setNotes(lead.notes || "");
+                    }}
+                    className="rounded px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSaveNotes}
+                    className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                  >
+                    Save
+                  </button>
+                </div>
               </div>
             ) : (
-              <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-dashed border-gray-300">
-                <p className="text-gray-500 text-sm">No WhatsApp draft generated yet.</p>
-              </div>
+              <p className="text-sm text-gray-700 dark:text-gray-300">
+                {lead.notes || "No notes added yet."}
+              </p>
             )}
           </div>
-        </div>
-      </div>
 
-      {/* Info Card */}
-      <div className="mb-6 rounded-xl bg-white p-5 shadow dark:bg-boxdark">
-        <h3 className="mb-3 text-lg font-semibold text-gray-800 dark:text-white">
-          Contact Information
-        </h3>
-        <div className="space-y-2 text-gray-700 dark:text-gray-300">
-          {lead.contactName && (
-            <p>
-              <strong>Contact Name:</strong> {lead.contactName}
-            </p>
-          )}
-          {lead.email && (
-            <p>
-              <strong>Email:</strong>{" "}
-              <a
-                href={`mailto:${lead.email}`}
-                className="text-blue-600 hover:underline dark:text-blue-400"
-              >
-                {lead.email}
-              </a>
-            </p>
-          )}
-          {lead.phone && (
-            <p>
-              <strong>Phone:</strong>{" "}
-              <a
-                href={`tel:${lead.phone}`}
-                className="text-blue-600 hover:underline dark:text-blue-400"
-              >
-                {lead.phone}
-              </a>
-            </p>
-          )}
-          {lead.website && (
-            <p>
-              <strong>Website:</strong>{" "}
-              <a
-                href={lead.website.startsWith("http") ? lead.website : `https://${lead.website}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline dark:text-blue-400"
-              >
-                {lead.website}
-              </a>
-            </p>
-          )}
-          {lead.source && (
-            <p>
-              <strong>Source:</strong> {lead.source}
-            </p>
-          )}
-          {!lead.contactName && !lead.email && !lead.phone && !lead.website && (
-            <p className="text-gray-500">No contact information available</p>
-          )}
-        </div>
-      </div>
-
-      {/* Notes */}
-      <div className="mb-6 rounded-xl bg-white p-5 shadow dark:bg-boxdark">
-        <div className="mb-2 flex items-center justify-between">
-          <h3 className="font-semibold text-gray-800 dark:text-white">Notes</h3>
-          {!isEditingNotes && (
-            <button
-              onClick={() => setIsEditingNotes(true)}
-              className="text-sm text-blue-600 hover:underline dark:text-blue-400"
-            >
-              Edit
-            </button>
-          )}
-        </div>
-        {isEditingNotes ? (
-          <div className="space-y-2">
-            <textarea
-              value={notes}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNotes(e.target.value)}
-              className="w-full rounded border p-3 dark:bg-gray-800 dark:text-white"
-              rows={4}
-              placeholder="Add notes about this lead..."
-            />
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => {
-                  setIsEditingNotes(false);
-                  setNotes(lead.notes || "");
-                }}
-                className="rounded px-4 py-2 text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveNotes}
-                className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-              >
-                Save
-              </button>
+          <div className="rounded-xl bg-white p-5 shadow dark:bg-white/[0.03]">
+            <h3 className="mb-4 font-semibold text-gray-800 dark:text-white">
+              Additional Information
+            </h3>
+            <div className="grid grid-cols-1 gap-3 text-sm text-gray-600 dark:text-gray-400 sm:grid-cols-2">
+              <p>
+                <span className="font-medium text-gray-500 dark:text-gray-400">
+                  Created:{" "}
+                </span>
+                <span>{formatDate(lead.createdAt)}</span>
+              </p>
+              <p>
+                <span className="font-medium text-gray-500 dark:text-gray-400">
+                  Last Updated:{" "}
+                </span>
+                <span>{formatDate(lead.updatedAt)}</span>
+              </p>
             </div>
           </div>
-        ) : (
-          <p className="text-gray-700 dark:text-gray-300">
-            {lead.notes || "No notes added yet."}
-          </p>
-        )}
-      </div>
-
-      {/* Additional Info */}
-      <div className="rounded-xl bg-white p-5 shadow dark:bg-boxdark">
-        <h3 className="mb-4 font-semibold text-gray-800 dark:text-white">
-          Additional Information
-        </h3>
-        <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-          <p>
-            <strong>Created:</strong> {formatDate(lead.createdAt)}
-          </p>
-          <p>
-            <strong>Last Updated:</strong> {formatDate(lead.updatedAt)}
-          </p>
         </div>
       </div>
     </div>

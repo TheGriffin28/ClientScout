@@ -24,7 +24,7 @@ const Settings = () => {
       />
       <PageBreadcrumb pageTitle="Settings" />
 
-      <div className="rounded-xl border border-stroke bg-white p-4 shadow-default dark:border-strokedark dark:bg-boxdark md:p-6 xl:p-9">
+      <div className="rounded-xl border border-stroke bg-white p-4 shadow-default dark:border-strokedark dark:bg-white/[0.03] md:p-6 xl:p-9">
         <div className="mb-6 flex gap-4 border-b border-stroke dark:border-strokedark">
           <button
             className={`pb-2 text-sm font-medium ${

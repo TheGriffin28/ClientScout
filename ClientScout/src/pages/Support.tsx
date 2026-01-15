@@ -13,7 +13,7 @@ export default function Support() {
       <div className="grid grid-cols-1 gap-9 sm:grid-cols-2">
         <div className="flex flex-col gap-9">
           {/* Contact Form */}
-          <div className="rounded-xl border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
+          <div className="rounded-xl border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-white/[0.03]">
             <div className="border-b border-stroke py-4 px-6.5 dark:border-strokedark">
               <h3 className="font-medium text-black dark:text-white">
                 Contact Support
@@ -53,7 +53,7 @@ export default function Support() {
 
         <div className="flex flex-col gap-9">
           {/* FAQ / Info */}
-          <div className="rounded-xl border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
+          <div className="rounded-xl border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-white/[0.03]">
             <div className="border-b border-stroke py-4 px-6.5 dark:border-strokedark">
               <h3 className="font-medium text-black dark:text-white">
                 Contact Information
@@ -62,15 +62,15 @@ export default function Support() {
             <div className="p-6.5">
               <div className="mb-4">
                 <h4 className="mb-1 font-semibold text-black dark:text-white">Email</h4>
-                <p className="text-sm text-gray-500">support@clientscout.com</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">support@clientscout.com</p>
               </div>
               <div className="mb-4">
                 <h4 className="mb-1 font-semibold text-black dark:text-white">Phone</h4>
-                <p className="text-sm text-gray-500">+1 234 567 890</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">+1 234 567 890</p>
               </div>
               <div>
                 <h4 className="mb-1 font-semibold text-black dark:text-white">Address</h4>
-                <p className="text-sm text-gray-500">123 Business St, Tech City, TC 90210</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">123 Business St, Tech City, TC 90210</p>
               </div>
             </div>
           </div>

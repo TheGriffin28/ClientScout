@@ -5,7 +5,7 @@ import StatusBadge from "../components/common/StatusBadge";
 import flatpickr from "flatpickr";
 import "flatpickr/dist/flatpickr.css";
 import { CalenderIcon } from "../icons";
-import { FaEnvelope, FaWhatsapp, FaPhoneAlt } from "react-icons/fa";
+import { FaEnvelope, FaWhatsapp, FaPhoneAlt, FaEllipsisV, FaEye, FaEdit, FaTrash } from "react-icons/fa";
 import { openEmail, openWhatsApp, openCall } from "../services/outreachService";
 
 const Leads = () => {
@@ -15,6 +15,7 @@ const Leads = () => {
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [openActionId, setOpenActionId] = useState<string | null>(null);
   const [formData, setFormData] = useState<LeadFormData>({
     businessName: "",
     contactName: "",
@@ -228,48 +229,60 @@ const Leads = () => {
     }
   };
 
+  const totalLeads = leads.length;
+
   return (
-    <div className="p-6">
-      {/* Page Title */}
-      <h1 className="mb-6 text-2xl font-semibold text-gray-800 dark:text-white">
-        Leads
-      </h1>
+    <div className="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-8">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-800 dark:text-white sm:text-3xl">
+            Leads
+          </h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Track and manage all your leads in one place.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-600 dark:bg-blue-500/10 dark:text-blue-300">
+            Total {totalLeads} lead{totalLeads === 1 ? "" : "s"}
+          </span>
+          <button
+            onClick={() => handleOpen()}
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
+          >
+            <span className="text-lg leading-none">＋</span>
+            <span>Add Lead</span>
+          </button>
+        </div>
+      </div>
 
-      <button
-        onClick={() => handleOpen()}
-        className="mb-4 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-      >
-        + Add Lead
-      </button>
-
-
-      {/* Table */}
       {loading ? (
-        <div className="rounded-xl bg-white p-6 shadow-md dark:bg-boxdark">
+        <div className="rounded-xl bg-white p-6 shadow-md dark:bg-white/[0.03]">
           <p className="text-center text-gray-600 dark:text-gray-300">Loading leads...</p>
         </div>
       ) : leads.length === 0 ? (
-        <div className="rounded-xl bg-white p-6 shadow-md dark:bg-boxdark">
+        <div className="rounded-xl bg-white p-6 shadow-md dark:bg-white/[0.03]">
           <p className="text-center text-gray-600 dark:text-gray-300">No leads found. Create your first lead!</p>
         </div>
       ) : (
-        <div className="rounded-xl bg-white shadow-md dark:bg-boxdark">
-          <table className="w-full text-left">
+        <div className="rounded-xl bg-white shadow-md dark:bg-white/[0.03]">
+          <div className="w-full overflow-x-auto">
+            <table className="w-full min-w-[720px] text-left">
             <thead className="border-b border-gray-200 dark:border-strokedark">
               <tr>
-                <th className="px-6 py-4 text-sm font-medium text-gray-500">
+                <th className="px-6 py-4 text-sm font-medium text-gray-500 dark:text-gray-400">
                   Business
                 </th>
-                <th className="px-6 py-4 text-sm font-medium text-gray-500">
+                <th className="px-6 py-4 text-sm font-medium text-gray-500 dark:text-gray-400">
                   Contact
                 </th>
-                <th className="px-6 py-4 text-sm font-medium text-gray-500">
+                <th className="px-6 py-4 text-sm font-medium text-gray-500 dark:text-gray-400">
                   Status
                 </th>
-                <th className="px-6 py-4 text-sm font-medium text-gray-500">
+                <th className="px-6 py-4 text-sm font-medium text-gray-500 dark:text-gray-400">
                   Follow-up
                 </th>
-                <th className="px-6 py-4 text-sm font-medium text-gray-500">
+                <th className="px-6 py-4 text-sm font-medium text-gray-500 dark:text-gray-400">
                   Actions
                 </th>
               </tr>
@@ -279,75 +292,111 @@ const Leads = () => {
               {leads.map((lead) => (
                 <tr
                   key={lead._id}
-                  className="border-b border-gray-100 last:border-0 dark:border-strokedark"
+                  className="border-b border-gray-100 last:border-0 hover:bg-gray-50 dark:border-strokedark dark:hover:bg-white/[0.02]"
                 >
-                  <td className="px-6 py-4 font-medium text-gray-800 dark:text-white">
-                    {lead.businessName}
+                  <td className="px-6 py-4 align-middle font-medium text-gray-800 dark:text-white">
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/leads/${lead._id}`)}
+                      className="rounded text-left text-blue-600 transition-colors hover:text-blue-700 hover:underline dark:text-blue-400"
+                    >
+                      {lead.businessName}
+                    </button>
                   </td>
-                  <td className="px-6 py-4 text-gray-600 dark:text-gray-300">
+                  <td className="px-6 py-4 align-middle text-gray-600 dark:text-gray-300">
                     {lead.contactName || "-"}
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-4 align-middle">
                     <StatusBadge status={lead.status} />
                   </td>
-                  <td className="px-6 py-4 text-gray-600 dark:text-gray-300">
+                  <td className="px-6 py-4 align-middle text-gray-600 dark:text-gray-300">
                     {lead.nextFollowUp
                       ? new Date(lead.nextFollowUp).toLocaleDateString()
                       : "-"}
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      {/* Quick Action Icons */}
+                  <td className="px-6 py-4 align-middle">
+                    <div className="flex flex-wrap items-center gap-3">
                       <div className="flex gap-2">
                         {lead.email && (
                           <button
                             onClick={() => openEmail({ lead })}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors dark:hover:bg-blue-900/20"
+                            className="flex h-9 w-9 items-center justify-center rounded-lg text-blue-600 transition-colors hover:bg-blue-50 dark:hover:bg-blue-900/20"
                             title="Send Email"
                           >
-                            <FaEnvelope className="w-4 h-4" />
+                            <FaEnvelope className="h-4 w-4" />
                           </button>
                         )}
                         {lead.phone && (
                           <>
                             <button
                               onClick={() => openWhatsApp({ lead })}
-                              className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors dark:hover:bg-green-900/20"
+                              className="flex h-9 w-9 items-center justify-center rounded-lg text-green-600 transition-colors hover:bg-green-50 dark:hover:bg-green-900/20"
                               title="Send WhatsApp"
                             >
-                              <FaWhatsapp className="w-4 h-4" />
+                              <FaWhatsapp className="h-4 w-4" />
                             </button>
                             <button
                               onClick={() => openCall(lead.phone!)}
-                              className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors dark:hover:bg-gray-700 dark:text-gray-400"
+                              className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-600 transition-colors hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-700"
                               title="Call"
                             >
-                              <FaPhoneAlt className="w-4 h-4" />
+                              <FaPhoneAlt className="h-4 w-4" />
                             </button>
                           </>
                         )}
                       </div>
-                      
-                      {/* Standard Actions */}
-                      <div className="flex gap-3 border-l border-gray-200 dark:border-gray-700 pl-3 ml-1">
+
+                      <div className="relative ml-1 border-l border-gray-200 pl-3 dark:border-gray-700">
                         <button
-                          onClick={() => navigate(`/leads/${lead._id}`)}
-                          className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
+                          type="button"
+                          onClick={() =>
+                            setOpenActionId(
+                              openActionId === lead._id ? null : lead._id
+                            )
+                          }
+                          className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
+                          title="More actions"
                         >
-                          View
+                          <FaEllipsisV className="h-4 w-4" />
                         </button>
-                        <button
-                          onClick={() => handleOpen(lead)}
-                          className="text-sm font-medium text-green-600 hover:underline dark:text-green-400"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(lead._id)}
-                          className="text-sm font-medium text-red-600 hover:underline dark:text-red-400"
-                        >
-                          Delete
-                        </button>
+
+                        {openActionId === lead._id && (
+                          <div className="absolute right-0 z-10 mt-2 w-40 rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-900">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenActionId(null);
+                                navigate(`/leads/${lead._id}`);
+                              }}
+                              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
+                            >
+                              <FaEye className="h-4 w-4 text-blue-500" />
+                              <span>View</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenActionId(null);
+                                handleOpen(lead);
+                              }}
+                              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
+                            >
+                              <FaEdit className="h-4 w-4 text-green-500" />
+                              <span>Edit</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenActionId(null);
+                                handleDelete(lead._id);
+                              }}
+                              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/40"
+                            >
+                              <FaTrash className="h-4 w-4" />
+                              <span>Delete</span>
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </td>
@@ -355,6 +404,7 @@ const Leads = () => {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
       {open && (
@@ -366,9 +416,9 @@ const Leads = () => {
             }
           }}
         >
-          <div className="w-full max-w-2xl max-h-[90vh] flex flex-col rounded-xl bg-white shadow-2xl dark:bg-boxdark overflow-hidden">
+          <div className="w-full max-w-2xl max-h-[90vh] flex flex-col rounded-xl bg-white shadow-2xl dark:bg-white/[0.03] overflow-hidden">
             {/* Header - Fixed */}
-            <div className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-5 dark:border-strokedark dark:bg-boxdark flex-shrink-0">
+            <div className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-5 dark:border-strokedark dark:bg-white/[0.03] flex-shrink-0">
               <h2 className="text-xl font-semibold text-gray-800 dark:text-white">
                 {editingLead ? "Edit Lead" : "Add New Lead"}
               </h2>
@@ -521,7 +571,7 @@ const Leads = () => {
                       {errors.website && (
                         <p className="mt-1 text-xs text-red-500">{errors.website}</p>
                       )}
-                      <p className="mt-1 text-xs text-gray-500">URL will be automatically formatted</p>
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">URL will be automatically formatted</p>
                     </div>
                   </div>
                 </div>

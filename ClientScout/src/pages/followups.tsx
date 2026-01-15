@@ -90,7 +90,7 @@ const FollowUps = () => {
         <h1 className="mb-6 text-2xl font-semibold text-gray-800 dark:text-white">
           Follow-ups
         </h1>
-        <div className="text-center py-8 text-gray-500">Loading follow-ups...</div>
+        <div className="text-center py-8 text-gray-500 dark:text-gray-400">Loading follow-ups...</div>
       </div>
     );
   }
@@ -101,7 +101,7 @@ const FollowUps = () => {
         <h1 className="mb-6 text-2xl font-semibold text-gray-800 dark:text-white">
           Follow-ups
         </h1>
-        <div className="text-center py-8 text-gray-500">
+        <div className="text-center py-8 text-gray-500 dark:text-gray-400">
           No follow-ups scheduled. Add a follow-up date to a lead to see it here.
         </div>
       </div>
@@ -118,10 +118,10 @@ const FollowUps = () => {
       {/* Follow-up List */}
       <div className="space-y-4">
         {followUps.map((item) => (
-          <div
-            key={item._id}
-            className="flex items-center justify-between rounded-xl bg-white p-5 shadow-md dark:bg-boxdark"
-          >
+            <div
+              key={item._id}
+              className="flex items-center justify-between rounded-xl bg-white p-5 shadow-md dark:bg-white/[0.03]"
+            >
             <div className="flex items-center gap-4">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
                 <FaPhoneAlt />
@@ -130,39 +130,38 @@ const FollowUps = () => {
                 <h3 className="font-semibold text-gray-800 dark:text-white">
                   {item.businessName}
                 </h3>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
                   {item.contactName || "No contact name"}
                 </p>
               </div>
             </div>
+          <div className="text-center">
+            <p className="text-sm text-gray-500 dark:text-gray-400">Follow-up Date</p>
+            <p className="font-medium text-gray-800 dark:text-white">
+              {formatDate(item.nextFollowUp!)}
+            </p>
+          </div>
 
-            <div className="text-center">
-              <p className="text-sm text-gray-500">Follow-up Date</p>
-              <p className="font-medium text-gray-800 dark:text-white">
-                {formatDate(item.nextFollowUp!)}
-              </p>
-            </div>
-
-            <div>
-              <span
-                className={`rounded-full px-3 py-1 text-sm font-medium ${
-                  item.statusLabel === "Overdue"
-                    ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
-                    : item.statusLabel === "Today"
-                    ? "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300"
-                    : "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
-                }`}
-              >
-                {item.statusLabel}
-              </span>
-            </div>
-
-            <button
-              onClick={() => handleMarkContacted(item._id)}
-              className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
+          <div>
+            <span
+              className={`rounded-full px-3 py-1 text-sm font-medium ${
+                item.statusLabel === "Overdue"
+                  ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
+                  : item.statusLabel === "Today"
+                  ? "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300"
+                  : "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+              }`}
             >
-              Mark Contacted
-            </button>
+              {item.statusLabel}
+            </span>
+          </div>
+
+          <button
+            onClick={() => handleMarkContacted(item._id)}
+            className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
+          >
+            Mark Contacted
+          </button>
           </div>
         ))}
       </div>
