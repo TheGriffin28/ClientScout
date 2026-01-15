@@ -14,9 +14,16 @@ const leadSchema = new mongoose.Schema(
     phone: String,
     website: String,
     industry: String,
+    businessType: String,
+    websiteObservations: {
+      performanceIssues: [String],
+      trustIssues: [String],
+      conversionIssues: [String]
+    },
     painPoints: [String],
     aiSummary: String,
     leadScore: { type: Number, min: 1, max: 5 },
+    leadScoreReason: String,
     aiGeneratedAt: Date,
 
     emailDraft: {

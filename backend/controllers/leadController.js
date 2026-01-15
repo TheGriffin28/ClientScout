@@ -186,9 +186,12 @@ export const analyzeLead = async (req, res) => {
     // Map AI result to DB schema
     const updates = {
       industry: aiResult.industry,
-      painPoints: aiResult.weaknesses, // Mapping weaknesses to painPoints
-      aiSummary: `${aiResult.pitch} (Business Type: ${aiResult.businessType})`, // Combining pitch and type
-      leadScore: aiResult.score,
+      businessType: aiResult.businessType,
+      websiteObservations: aiResult.websiteObservations,
+      painPoints: aiResult.keyPainPoints,
+      aiSummary: aiResult.suggestedPitch,
+      leadScore: aiResult.leadScore?.value,
+      leadScoreReason: aiResult.leadScore?.reason,
       aiGeneratedAt: new Date()
     };
 
@@ -255,7 +258,9 @@ export const generateEmail = async (req, res) => {
       lead.industry,
       lead.contactName,
       lead.painPoints,
-      lead.aiSummary
+      lead.aiSummary,
+      lead.businessType,
+      lead.websiteObservations
     );
 
     lead.emailDraft = {
@@ -289,7 +294,9 @@ export const generateWhatsApp = async (req, res) => {
     const whatsappMsg = await generateWhatsAppDraft(
       lead.businessName,
       lead.contactName,
-      lead.painPoints
+      lead.painPoints,
+      lead.businessType,
+      lead.websiteObservations
     );
 
     lead.whatsappDraft = {

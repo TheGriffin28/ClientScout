@@ -8,9 +8,16 @@ export interface Lead {
   phone?: string;
   website?: string;
   industry?: string;
+  businessType?: string;
+  websiteObservations?: {
+    performanceIssues: string[];
+    trustIssues: string[];
+    conversionIssues: string[];
+  };
   painPoints?: string[];
   aiSummary?: string;
   leadScore?: number;
+  leadScoreReason?: string;
   aiGeneratedAt?: string;
   emailDraft?: {
     subject: string;
@@ -39,9 +46,16 @@ export interface LeadFormData {
   phone?: string;
   website?: string;
   industry?: string;
+  businessType?: string;
+  websiteObservations?: {
+    performanceIssues: string[];
+    trustIssues: string[];
+    conversionIssues: string[];
+  };
   painPoints?: string[];
   aiSummary?: string;
   leadScore?: number;
+  leadScoreReason?: string;
   aiGeneratedAt?: string;
   source?: string;
   status: "New" | "Contacted" | "FollowUp" | "Interested" | "Converted" | "Lost";

@@ -291,13 +291,22 @@ const LeadDetail = () => {
             </div>
 
             <div className="space-y-6">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div>
                   <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                     Industry
                   </p>
                   <p className="font-medium text-gray-800 dark:text-white">
                     {lead.industry || "Not identified"}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    Business Type
+                  </p>
+                  <p className="font-medium text-gray-800 dark:text-white">
+                    {lead.businessType || "Not identified"}
                   </p>
                 </div>
 
@@ -319,8 +328,60 @@ const LeadDetail = () => {
                       / 5
                     </span>
                   </div>
+                  {lead.leadScoreReason && (
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 italic">
+                      {lead.leadScoreReason}
+                    </p>
+                  )}
                 </div>
               </div>
+
+              {lead.websiteObservations && (
+                <div className="grid grid-cols-1 gap-4 rounded-lg bg-gray-50 p-4 dark:bg-gray-800/50 md:grid-cols-3">
+                  <div>
+                    <p className="mb-2 text-xs font-bold uppercase tracking-wider text-red-500">
+                      Performance Issues
+                    </p>
+                    {lead.websiteObservations.performanceIssues?.length > 0 ? (
+                      <ul className="list-inside list-disc space-y-1 text-sm text-gray-700 dark:text-gray-300">
+                        {lead.websiteObservations.performanceIssues.map((issue, i) => (
+                          <li key={i}>{issue}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-xs italic text-gray-500">None identified</p>
+                    )}
+                  </div>
+                  <div>
+                    <p className="mb-2 text-xs font-bold uppercase tracking-wider text-orange-500">
+                      Trust Issues
+                    </p>
+                    {lead.websiteObservations.trustIssues?.length > 0 ? (
+                      <ul className="list-inside list-disc space-y-1 text-sm text-gray-700 dark:text-gray-300">
+                        {lead.websiteObservations.trustIssues.map((issue, i) => (
+                          <li key={i}>{issue}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-xs italic text-gray-500">None identified</p>
+                    )}
+                  </div>
+                  <div>
+                    <p className="mb-2 text-xs font-bold uppercase tracking-wider text-blue-500">
+                      Conversion Issues
+                    </p>
+                    {lead.websiteObservations.conversionIssues?.length > 0 ? (
+                      <ul className="list-inside list-disc space-y-1 text-sm text-gray-700 dark:text-gray-300">
+                        {lead.websiteObservations.conversionIssues.map((issue, i) => (
+                          <li key={i}>{issue}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-xs italic text-gray-500">None identified</p>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <p className="mb-2 text-sm font-medium text-gray-500 dark:text-gray-400">
