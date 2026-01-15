@@ -158,7 +158,7 @@ export default function Home() {
               Welcome back! Here's what's happening with your leads today.
             </p>
           </div>
-          <div className="hidden sm:flex items-center gap-2 rounded-lg border border-stroke bg-white px-4 py-2 shadow-sm dark:border-strokedark dark:bg-boxdark">
+          <div className="hidden sm:flex items-center gap-2 rounded-lg border border-stroke bg-white px-4 py-2 shadow-sm dark:border-gray-700 dark:bg-gray-800">
             <FiCalendar className="text-gray-500" />
             <span className="text-sm font-medium text-black dark:text-white">{currentDate}</span>
           </div>
@@ -254,7 +254,7 @@ const CardDataStats = ({ title, total, type, trend, trendUp }: { title: string; 
   }
 
   return (
-    <div className="group relative rounded-xl border border-stroke bg-white p-6 shadow-sm hover:shadow-lg transition-all duration-300 dark:border-strokedark dark:bg-boxdark">
+    <div className="group relative rounded-xl border border-stroke bg-white p-6 shadow-sm hover:shadow-lg transition-all duration-300 dark:border-gray-700 dark:bg-gray-800">
       <div className="flex items-center justify-between">
         <div className={`flex h-12 w-12 items-center justify-center rounded-full ${colorClass}`}>
           <Icon size={24} />
