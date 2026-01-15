@@ -293,6 +293,7 @@ export const generateWhatsApp = async (req, res) => {
     const { generateWhatsAppDraft } = await import("../services/aiService.js");
     const whatsappMsg = await generateWhatsAppDraft(
       lead.businessName,
+      lead.industry,
       lead.contactName,
       lead.painPoints,
       lead.businessType,

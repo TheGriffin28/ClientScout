@@ -75,33 +75,35 @@ export const generateEmailDraft = async (businessName, industry, contactName, pa
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
     const prompt = `
-      You are a senior digital conversion consultant. Write a professional, highly personalized cold outreach email to a potential client.
-      
-      Client Details:
-      - Business Name: ${businessName}
-      - Business Type: ${businessType || "N/A"}
-      - Contact Name: ${contactName || "Decision Maker"}
-      - Industry: ${industry || "Unknown"}
-      - Identified Pain Points: ${painPoints ? painPoints.join(", ") : "General improvement"}
-      - Website Observations: 
-        * Performance: ${websiteObservations?.performanceIssues?.join(", ") || "None noted"}
-        * Trust: ${websiteObservations?.trustIssues?.join(", ") || "None noted"}
-        * Conversion: ${websiteObservations?.conversionIssues?.join(", ") || "None noted"}
-      - AI Strategy Insight: ${aiSummary || "N/A"}
-
-      The email should:
-      1. Have a compelling, non-spammy subject line.
-      2. Start with a personalized opening that mentions their business.
-      3. Briefly mention 1-2 specific observations about their website (performance, trust, or conversion) to show you've done your research.
-      4. Pivot to how these issues are likely affecting their revenue or growth.
-      5. Offer a clear, low-friction Call to Action (CTA) like a "quick 5-minute video" or a "brief chat".
-      6. Be professional but conversational, under 150 words.
-
-      Return ONLY a valid JSON object with this format:
-      {
-        "subject": "The email subject line",
-        "body": "The email body content (use \\n for line breaks)"
-      }
+      You are a senior digital conversion consultant who helps businesses improve lead quality and revenue through better website structure and trust-building. 
+ 
+      Write a professional, highly personalized cold outreach email to a potential client. 
+ 
+      Client Context: 
+      - Business Name: ${businessName} 
+      - Industry: ${industry || "Unknown"} 
+      - Business Type: ${businessType || "N/A"} 
+      - Website Insights: 
+        - Key Performance Issues: ${websiteObservations?.performanceIssues?.join(", ") || "None"} 
+        - Key Trust Issues: ${websiteObservations?.trustIssues?.join(", ") || "None"} 
+        - Key Conversion Issues: ${websiteObservations?.conversionIssues?.join(", ") || "None"} 
+      - Primary Business Pain Points: ${painPoints?.join(", ") || "General optimization gaps"} 
+      - Strategic Insight: ${aiSummary || "N/A"} 
+ 
+      Instructions: 
+      - Choose ONLY the most impactful 1–2 website observations to mention. 
+      - Write in a calm, advisory tone (not salesy). 
+      - Show clear understanding of their industry and decision-makers. 
+      - Explain briefly how the issue could affect lead quality, conversions, or revenue. 
+      - Offer a low-friction CTA (e.g., short walkthrough, quick idea, brief chat). 
+      - Keep the email under 150 words. 
+ 
+      Return ONLY valid JSON in this format: 
+ 
+      { 
+        "subject": "Concise, non-spammy subject line", 
+        "body": "Email body text. Use \\n for line breaks." 
+      } 
     `;
 
     const result = await model.generateContent(prompt);
@@ -115,26 +117,33 @@ export const generateEmailDraft = async (businessName, industry, contactName, pa
   }
 };
 
-export const generateWhatsAppDraft = async (businessName, contactName, painPoints, businessType, websiteObservations) => {
+export const generateWhatsAppDraft = async (businessName, industry, contactName, painPoints, businessType, websiteObservations) => {
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
     const prompt = `
-      You are a senior digital conversion consultant. Write a short, casual, and friendly WhatsApp message to a potential client.
-
-      Client Details:
-      - Business Name: ${businessName}
-      - Business Type: ${businessType || "N/A"}
-      - Contact Name: ${contactName || "Decision Maker"}
-      - Key Website Issue: ${websiteObservations?.conversionIssues?.[0] || websiteObservations?.performanceIssues?.[0] || "General optimization"}
-
-      The message should be:
-      1. Very brief (2-3 sentences).
-      2. Friendly and casual (suitable for WhatsApp).
-      3. Mention one specific "quick win" or observation about their website to grab attention.
-      4. End with a soft question to start a conversation.
-      5. No spammy links or heavy sales pitch.
-
-      Return ONLY the raw text of the message. Do not use Markdown or JSON.
+      You are a senior digital conversion consultant reaching out informally on WhatsApp. 
+ 
+      Write a short, friendly, and respectful WhatsApp message to start a conversation. 
+ 
+      Client Context: 
+      - Business Name: ${businessName} 
+      - Industry: ${industry || "their industry"} 
+      - One Key Website Observation: ${
+        websiteObservations?.conversionIssues?.[0] ||
+        websiteObservations?.trustIssues?.[0] ||
+        websiteObservations?.performanceIssues?.[0] ||
+        "a small optimization opportunity"
+      } 
+ 
+      Instructions: 
+      - 2–3 sentences maximum. 
+      - Friendly, human, and conversational. 
+      - Mention ONE specific observation or quick win. 
+      - Do NOT pitch services. 
+      - End with a soft question (easy to reply yes/no). 
+ 
+      Return ONLY the raw message text. 
+      Do not use markdown, bullet points, or emojis. 
     `;
 
     const result = await model.generateContent(prompt);
