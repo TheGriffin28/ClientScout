@@ -70,7 +70,7 @@ export default function ForgotPasswordForm() {
                   />
                 </div>
                 <div>
-                  <Button className="w-full" disabled={loading}>
+                  <Button className="w-full" disabled={loading} type="submit">
                     {loading ? "Sending..." : "Send Reset Link"}
                   </Button>
                 </div>
