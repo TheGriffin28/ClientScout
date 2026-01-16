@@ -1,18 +1,84 @@
+import { useState, useEffect } from "react";
 import { useModal } from "../../hooks/useModal";
 import { Modal } from "../ui/modal";
 import Button from "../ui/button/Button";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
 import { useUser } from "../../context/UserContext";
+import api from "../../services/api";
 
 export default function UserInfoCard() {
   const { isOpen, openModal, closeModal } = useModal();
-  const { user } = useUser();
-  const handleSave = () => {
-    // Handle save logic here
-    console.log("Saving changes...");
-    closeModal();
+  const { user, refreshUser } = useUser();
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Form state
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    mobileNumber: "",
+    bio: "",
+    location: "",
+    socialLinks: {
+      facebook: "",
+      x: "",
+      linkedin: "",
+      instagram: "",
+    },
+  });
+
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        name: user.name || "",
+        email: user.email || "",
+        mobileNumber: user.mobileNumber || "",
+        bio: user.bio || "",
+        location: user.location || "",
+        socialLinks: {
+          facebook: user.socialLinks?.facebook || "",
+          x: user.socialLinks?.x || "",
+          linkedin: user.socialLinks?.linkedin || "",
+          instagram: user.socialLinks?.instagram || "",
+        },
+      });
+    }
+  }, [user]);
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    try {
+      await api.put("/auth/profile", formData);
+      await refreshUser();
+      alert("Profile updated successfully!");
+      closeModal();
+    } catch (error: any) {
+      alert(error.response?.data?.message || "Failed to update profile");
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    if (name.startsWith("social.")) {
+      const socialField = name.split(".")[1];
+      setFormData((prev) => ({
+        ...prev,
+        socialLinks: {
+          ...prev.socialLinks,
+          [socialField]: value,
+        },
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
+  };
+
   return (
     <div className="p-5 border border-gray-200 rounded-2xl dark:border-gray-800 lg:p-6">
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
@@ -45,7 +111,7 @@ export default function UserInfoCard() {
                 Phone
               </p>
               <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-                +09 363 398 46
+                {user?.mobileNumber || "Not set"}
               </p>
             </div>
 
@@ -54,7 +120,16 @@ export default function UserInfoCard() {
                 Bio
               </p>
               <p className="text-sm font-medium text-gray-800 dark:text-white/90">
-                Team Manager
+                {user?.bio || "No bio set"}
+              </p>
+            </div>
+
+            <div>
+              <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
+                Location
+              </p>
+              <p className="text-sm font-medium text-gray-800 dark:text-white/90">
+                {user?.location || "No location set"}
               </p>
             </div>
           </div>
@@ -93,7 +168,7 @@ export default function UserInfoCard() {
               Update your details to keep your profile up-to-date.
             </p>
           </div>
-          <form className="flex flex-col">
+          <form className="flex flex-col" onSubmit={handleSave}>
             <div className="custom-scrollbar h-[450px] overflow-y-auto px-2 pb-3">
               <div>
                 <h5 className="mb-5 text-lg font-medium text-gray-800 dark:text-white/90 lg:mb-6">
@@ -105,26 +180,40 @@ export default function UserInfoCard() {
                     <Label>Facebook</Label>
                     <Input
                       type="text"
-                      value="https://www.facebook.com/PimjoHQ"
+                      name="social.facebook"
+                      value={formData.socialLinks.facebook}
+                      onChange={handleInputChange}
                     />
                   </div>
 
                   <div>
                     <Label>X.com</Label>
-                    <Input type="text" value="https://x.com/PimjoHQ" />
+                    <Input
+                      type="text"
+                      name="social.x"
+                      value={formData.socialLinks.x}
+                      onChange={handleInputChange}
+                    />
                   </div>
 
                   <div>
                     <Label>Linkedin</Label>
                     <Input
                       type="text"
-                      value="https://www.linkedin.com/company/pimjo"
+                      name="social.linkedin"
+                      value={formData.socialLinks.linkedin}
+                      onChange={handleInputChange}
                     />
                   </div>
 
                   <div>
                     <Label>Instagram</Label>
-                    <Input type="text" value="https://instagram.com/PimjoHQ" />
+                    <Input
+                      type="text"
+                      name="social.instagram"
+                      value={formData.socialLinks.instagram}
+                      onChange={handleInputChange}
+                    />
                   </div>
                 </div>
               </div>
@@ -134,29 +223,57 @@ export default function UserInfoCard() {
                 </h5>
 
                 <div className="grid grid-cols-1 gap-x-6 gap-y-5 lg:grid-cols-2">
-                  <div className="col-span-2 lg:col-span-1">
-                    <Label>First Name</Label>
-                    <Input type="text" value="Musharof" />
-                  </div>
-
-                  <div className="col-span-2 lg:col-span-1">
-                    <Label>Last Name</Label>
-                    <Input type="text" value="Chowdhury" />
+                  <div className="col-span-2">
+                    <Label>Full Name</Label>
+                    <Input
+                      type="text"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleInputChange}
+                      required
+                    />
                   </div>
 
                   <div className="col-span-2 lg:col-span-1">
                     <Label>Email Address</Label>
-                    <Input type="text" value="randomuser@pimjo.com" />
+                    <Input
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      required
+                    />
                   </div>
 
                   <div className="col-span-2 lg:col-span-1">
                     <Label>Phone</Label>
-                    <Input type="text" value="+09 363 398 46" />
+                    <Input
+                      type="text"
+                      name="mobileNumber"
+                      value={formData.mobileNumber}
+                      onChange={handleInputChange}
+                      required
+                    />
                   </div>
 
                   <div className="col-span-2">
                     <Label>Bio</Label>
-                    <Input type="text" value="Team Manager" />
+                    <Input
+                      type="text"
+                      name="bio"
+                      value={formData.bio}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+
+                  <div className="col-span-2">
+                    <Label>Location / Address</Label>
+                    <Input
+                      type="text"
+                      name="location"
+                      value={formData.location}
+                      onChange={handleInputChange}
+                    />
                   </div>
                 </div>
               </div>
@@ -165,8 +282,8 @@ export default function UserInfoCard() {
               <Button size="sm" variant="outline" onClick={closeModal}>
                 Close
               </Button>
-              <Button size="sm" onClick={handleSave}>
-                Save Changes
+              <Button size="sm" type="submit" disabled={isSaving}>
+                {isSaving ? "Saving..." : "Save Changes"}
               </Button>
             </div>
           </form>

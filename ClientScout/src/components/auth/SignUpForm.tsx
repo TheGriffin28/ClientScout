@@ -14,6 +14,7 @@ export default function SignUpForm() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
+  const [mobileNumber, setMobileNumber] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   
@@ -35,6 +36,7 @@ export default function SignUpForm() {
       const response = await api.post("/auth/register", {
         name: fullName,
         email,
+        mobileNumber,
         password,
       });
       
@@ -114,6 +116,20 @@ export default function SignUpForm() {
                     placeholder="Enter your email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                  />
+                </div>
+                {/* <!-- Mobile Number --> */}
+                <div>
+                  <Label>
+                    Mobile Number<span className="text-error-500">*</span>
+                  </Label>
+                  <Input
+                    type="text"
+                    id="mobileNumber"
+                    name="mobileNumber"
+                    placeholder="Enter your mobile number"
+                    value={mobileNumber}
+                    onChange={(e) => setMobileNumber(e.target.value)}
                   />
                 </div>
                 {/* <!-- Password --> */}

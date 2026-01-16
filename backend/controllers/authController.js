@@ -9,9 +9,9 @@ const generateToken = (id) => {
 };
 
 export const registerUser = async (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, email, password, mobileNumber } = req.body;
 
-  if (!name || !email || !password) {
+  if (!name || !email || !password || !mobileNumber) {
     return res.status(400).json({ message: "All fields required" });
   }
 
@@ -25,7 +25,8 @@ export const registerUser = async (req, res) => {
   const user = await User.create({
     name,
     email,
-    password: hashedPassword
+    password: hashedPassword,
+    mobileNumber
   });
 
   const token = generateToken(user._id);
@@ -41,6 +42,7 @@ export const registerUser = async (req, res) => {
     id: user._id,
     name: user.name,
     email: user.email,
+    mobileNumber: user.mobileNumber,
     token // Include token in response for header-based auth
   });
 };
@@ -75,6 +77,7 @@ export const loginUser = async (req, res) => {
     id: user._id,
     name: user.name,
     email: user.email,
+    mobileNumber: user.mobileNumber,
     token // Include the token in the response
   });
 };
@@ -84,8 +87,78 @@ export const getMe = async (req, res) => {
     id: req.user._id,
     name: req.user.name,
     email: req.user.email,
+    mobileNumber: req.user.mobileNumber,
+    bio: req.user.bio,
+    location: req.user.location,
+    socialLinks: req.user.socialLinks,
+    address: req.user.address,
   };
   res.status(200).json(user);
+};
+
+export const updateProfile = async (req, res) => {
+  const { name, email, mobileNumber, bio, location, socialLinks, address } = req.body;
+
+  try {
+    const user = await User.findById(req.user._id);
+
+    if (user) {
+      user.name = name || user.name;
+      user.email = email || user.email;
+      user.mobileNumber = mobileNumber || user.mobileNumber;
+      user.bio = bio !== undefined ? bio : user.bio;
+      user.location = location !== undefined ? location : user.location;
+      
+      if (socialLinks) {
+        user.socialLinks = {
+          ...user.socialLinks,
+          ...socialLinks
+        };
+      }
+
+      if (address) {
+        user.address = {
+          ...user.address,
+          ...address
+        };
+      }
+
+      const updatedUser = await user.save();
+
+      res.status(200).json({
+        id: updatedUser._id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        mobileNumber: updatedUser.mobileNumber,
+        bio: updatedUser.bio,
+        location: updatedUser.location,
+        socialLinks: updatedUser.socialLinks,
+        address: updatedUser.address,
+      });
+    } else {
+      res.status(404).json({ message: "User not found" });
+    }
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const updatePassword = async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+
+  try {
+    const user = await User.findById(req.user._id);
+
+    if (user && (await bcrypt.compare(currentPassword, user.password))) {
+      user.password = await bcrypt.hash(newPassword, 10);
+      await user.save();
+      res.status(200).json({ message: "Password updated successfully" });
+    } else {
+      res.status(401).json({ message: "Invalid current password" });
+    }
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
 };
 
 export const forgotPassword = async (req, res) => {

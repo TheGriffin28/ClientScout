@@ -5,7 +5,21 @@ interface User {
   id: string;
   name: string;
   email: string;
-  // Add other fields if needed
+  mobileNumber: string;
+  bio?: string;
+  location?: string;
+  socialLinks?: {
+    facebook?: string;
+    x?: string;
+    linkedin?: string;
+    instagram?: string;
+  };
+  address?: {
+    country?: string;
+    cityState?: string;
+    postalCode?: string;
+    taxId?: string;
+  };
 }
 
 interface UserContextType {
