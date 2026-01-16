@@ -38,8 +38,6 @@ export default function SignUpForm() {
         password,
       });
       
-      console.log("Registration successful", response.data);
-      
       // Store token
       localStorage.setItem("token", response.data.token);
       

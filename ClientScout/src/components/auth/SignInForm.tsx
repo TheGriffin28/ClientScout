@@ -10,7 +10,6 @@ import api from "../../services/api";
 import { useUser } from "../../context/UserContext";
 
 export default function SignInForm() {
-  console.log("Rendering SignInForm");
   const [showPassword, setShowPassword] = useState(false);
   const [isChecked, setIsChecked] = useState(false);
   const [email, setEmail] = useState("");
@@ -24,12 +23,9 @@ export default function SignInForm() {
     setError(""); // Clear previous errors
     try {
       const response = await api.post("/auth/login", { email, password });
-      console.log("Full backend response:", response);
-      console.log("Login successful", response.data);
       // Store token and redirect to dashboard
       if (response.data.token) {
         localStorage.setItem("token", response.data.token);
-        console.log("Token stored in localStorage:", localStorage.getItem("token"));
         
         // Refresh user context
         await refreshUser();
@@ -37,11 +33,9 @@ export default function SignInForm() {
         // Redirect
         navigate("/");
       } else {
-        console.error("Token is missing in the response");
         setError("Login failed: Token is missing in the response");
       }
     } catch (err) {
-      console.error("Login error:", err);
       if (axios.isAxiosError(err)) {
         if (err.response) {
           // Server responded with error
@@ -117,7 +111,7 @@ export default function SignInForm() {
                     </span>
                   </div>
                   <Link
-                    to="/reset-password"
+                    to="/forgot-password"
                     className="text-sm text-brand-500 hover:text-brand-600 dark:text-brand-400"
                   >
                     Forgot password?
