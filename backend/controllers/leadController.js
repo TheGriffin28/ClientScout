@@ -17,9 +17,20 @@ export const getLeads = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
+    const search = req.query.search || "";
     const skip = (page - 1) * limit;
 
     const query = { user: req.user._id };
+    
+    if (search) {
+      query.$or = [
+        { businessName: { $regex: search, $options: "i" } },
+        { contactName: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+        { phone: { $regex: search, $options: "i" } },
+        { industry: { $regex: search, $options: "i" } },
+      ];
+    }
     
     const [leads, total] = await Promise.all([
       Lead.find(query)
@@ -161,14 +172,24 @@ export const getFollowUps = async (req, res) => {
     }
 
     const userId = req.user._id;
-    console.log("Fetching follow-ups for user:", userId);
+    const search = req.query.search || "";
+    console.log(`Fetching follow-ups for user: ${userId}, search: "${search}"`);
 
-    // Simplified query - find all leads for user, then filter in memory if needed
-    // But better to filter in database
-    const leads = await Lead.find({
+    const query = {
       user: userId,
       nextFollowUp: { $ne: null, $exists: true }
-    })
+    };
+
+    if (search) {
+      query.$or = [
+        { businessName: { $regex: search, $options: "i" } },
+        { contactName: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+        { phone: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const leads = await Lead.find(query)
       .sort({ nextFollowUp: 1 }) // Sort by follow-up date ascending
       .select("_id businessName contactName email phone nextFollowUp status")
       .lean(); // Use lean() for better performance

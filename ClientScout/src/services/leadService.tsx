@@ -70,8 +70,8 @@ export interface PaginatedLeads {
   totalLeads: number;
 }
 
-export const getLeads = async (page = 1, limit = 10): Promise<PaginatedLeads | Lead[]> => {
-  const res = await api.get(`/leads?page=${page}&limit=${limit}`);
+export const getLeads = async (page = 1, limit = 10, search = ""): Promise<PaginatedLeads | Lead[]> => {
+  const res = await api.get(`/leads?page=${page}&limit=${limit}${search ? `&search=${search}` : ""}`);
   return res.data;
 };
 
@@ -104,8 +104,8 @@ export const getLeadStats = async () => {
   return res.data;
 };
 
-export const getFollowUps = async (): Promise<Lead[]> => {
-  const res = await api.get("/leads/followups");
+export const getFollowUps = async (search = ""): Promise<Lead[]> => {
+  const res = await api.get(`/leads/followups${search ? `?search=${search}` : ""}`);
   return res.data;
 };
 

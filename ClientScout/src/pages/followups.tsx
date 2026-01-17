@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import { FaPhoneAlt } from "react-icons/fa";
 import { getFollowUps, updateLead, Lead } from "../services/leadService";
@@ -10,15 +11,17 @@ interface FollowUpItem extends Lead {
 const FollowUps = () => {
   const [followUps, setFollowUps] = useState<FollowUpItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchParams] = useSearchParams();
+  const searchQuery = searchParams.get("search") || "";
 
   useEffect(() => {
-    fetchFollowUps();
-  }, []);
+    fetchFollowUps(searchQuery);
+  }, [searchQuery]);
 
-  const fetchFollowUps = async () => {
+  const fetchFollowUps = async (search = "") => {
     try {
       setLoading(true);
-      const leads = await getFollowUps();
+      const leads = await getFollowUps(search);
       
       // Calculate status for each follow-up
       const followUpsWithStatus = leads.map((lead) => {
@@ -104,7 +107,9 @@ const FollowUps = () => {
           Follow-ups
         </h1>
         <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-          No follow-ups scheduled. Add a follow-up date to a lead to see it here.
+          {searchQuery 
+            ? `No follow-ups found matching "${searchQuery}"` 
+            : "No follow-ups scheduled. Add a follow-up date to a lead to see it here."}
         </div>
       </div>
     );

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import { getLeads, createLead, updateLead, deleteLead, Lead, LeadFormData } from "../services/leadService";
 import StatusBadge from "../components/common/StatusBadge";
@@ -36,14 +36,17 @@ const Leads = () => {
     nextFollowUp: "",
   });
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const searchQuery = searchParams.get("search") || "";
+  
   const datePickerRef = useRef<HTMLInputElement>(null);
   const flatpickrInstance = useRef<flatpickr.Instance | null>(null);
   const initialDateRef = useRef<string>("");
   const actionMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetchLeads(currentPage);
-  }, [currentPage]);
+    fetchLeads(currentPage, searchQuery);
+  }, [currentPage, searchQuery]);
 
   // Click outside listener for action menu
   useEffect(() => {
@@ -98,10 +101,10 @@ const Leads = () => {
     }
   }, [open]); // Only depend on open, not formData to prevent re-initialization
 
-  const fetchLeads = async (page = 1) => {
+  const fetchLeads = async (page = 1, search = "") => {
     try {
       setLoading(true);
-      const data = await getLeads(page, limit);
+      const data = await getLeads(page, limit, search);
       
       // Defensive check for data structure
       if (data && "leads" in data) {
@@ -306,27 +309,31 @@ const Leads = () => {
         </div>
       ) : (leads || []).length === 0 ? (
         <div className="rounded-xl bg-white p-6 shadow-md dark:bg-white/[0.03]">
-          <p className="text-center text-gray-600 dark:text-gray-300">No leads found. Create your first lead!</p>
+          <p className="text-center text-gray-600 dark:text-gray-300">
+            {searchQuery 
+              ? `No leads found matching "${searchQuery}"` 
+              : "No leads found. Create your first lead!"}
+          </p>
         </div>
       ) : (
         <div className="rounded-xl bg-white shadow-md dark:bg-white/[0.03]">
-          <div className="w-full overflow-x-auto overflow-y-visible min-h-[400px]">
+          <div className="w-full overflow-x-auto overflow-y-visible min-h-[500px] md:min-h-[400px]">
             <table className="w-full min-w-[720px] text-left">
             <thead className="border-b border-gray-200 dark:border-strokedark">
               <tr>
-                <th className="px-6 py-4 text-sm font-medium text-gray-500 dark:text-gray-400">
+                <th className="px-6 py-6 md:py-4 text-sm font-medium text-gray-500 dark:text-gray-400">
                   Business
                 </th>
-                <th className="px-6 py-4 text-sm font-medium text-gray-500 dark:text-gray-400">
+                <th className="px-6 py-6 md:py-4 text-sm font-medium text-gray-500 dark:text-gray-400">
                   Contact
                 </th>
-                <th className="px-6 py-4 text-sm font-medium text-gray-500 dark:text-gray-400">
+                <th className="px-6 py-6 md:py-4 text-sm font-medium text-gray-500 dark:text-gray-400">
                   Status
                 </th>
-                <th className="px-6 py-4 text-sm font-medium text-gray-500 dark:text-gray-400">
+                <th className="px-6 py-6 md:py-4 text-sm font-medium text-gray-500 dark:text-gray-400">
                   Follow-up
                 </th>
-                <th className="px-6 py-4 text-sm font-medium text-gray-500 dark:text-gray-400">
+                <th className="px-6 py-6 md:py-4 text-sm font-medium text-gray-500 dark:text-gray-400">
                   Actions
                 </th>
               </tr>
@@ -338,7 +345,7 @@ const Leads = () => {
                   key={lead._id}
                   className="hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors"
                 >
-                  <td className="px-6 py-4 align-middle font-medium text-gray-800 dark:text-white">
+                  <td className="px-6 py-6 md:py-4 align-middle font-medium text-gray-800 dark:text-white">
                     <button
                       type="button"
                       onClick={() => navigate(`/leads/${lead._id}`)}
@@ -347,18 +354,18 @@ const Leads = () => {
                       {lead.businessName}
                     </button>
                   </td>
-                  <td className="px-6 py-4 align-middle text-gray-600 dark:text-gray-300">
+                  <td className="px-6 py-6 md:py-4 align-middle text-gray-600 dark:text-gray-300">
                     {lead.contactName || "-"}
                   </td>
-                  <td className="px-6 py-4 align-middle">
+                  <td className="px-6 py-6 md:py-4 align-middle">
                     <StatusBadge status={lead.status} />
                   </td>
-                  <td className="px-6 py-4 align-middle text-gray-600 dark:text-gray-300">
+                  <td className="px-6 py-6 md:py-4 align-middle text-gray-600 dark:text-gray-300">
                     {lead.nextFollowUp
                       ? new Date(lead.nextFollowUp).toLocaleDateString()
                       : "-"}
                   </td>
-                  <td className="px-6 py-4 align-middle">
+                  <td className="px-6 py-6 md:py-4 align-middle">
                     <div className="flex items-center gap-3">
                       <div className="flex gap-1">
                         {lead.email && (
