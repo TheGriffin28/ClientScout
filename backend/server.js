@@ -50,15 +50,15 @@ app.use(cors({
 app.use("/api/auth", authRoutes);
 app.use("/api/leads", leadRoutes);
 
+app.get("/", (req, res) => {
+  res.send("ClientScout API running 🚀");
+});
+
 /* Catch-all for 404s */
 app.use((req, res) => {
   res.status(404).json({ message: `Route ${req.method} ${req.url} not found` });
 });
 
-
-app.get("/", (req, res) => {
-  res.send("ClientScout API running 🚀");
-});
 
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
