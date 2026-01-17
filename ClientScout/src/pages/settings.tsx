@@ -94,20 +94,20 @@ const Settings = () => {
       <div className="rounded-xl border border-stroke bg-white p-4 shadow-default dark:border-strokedark dark:bg-white/[0.03] md:p-6 xl:p-9">
         <div className="mb-6 flex gap-4 border-b border-stroke dark:border-strokedark">
           <button
-            className={`pb-2 text-sm font-medium ${
+            className={`pb-2 text-sm font-medium transition-colors ${
               activeTab === "profile"
-                ? "border-b-2 border-primary text-primary"
-                : "text-gray-500 hover:text-primary"
+                ? "border-b-2 border-primary text-primary dark:border-white dark:text-white"
+                : "text-gray-500 hover:text-primary dark:text-gray-400 dark:hover:text-white"
             }`}
             onClick={() => setActiveTab("profile")}
           >
             Edit Profile
           </button>
           <button
-            className={`pb-2 text-sm font-medium ${
+            className={`pb-2 text-sm font-medium transition-colors ${
               activeTab === "account"
-                ? "border-b-2 border-primary text-primary"
-                : "text-gray-500 hover:text-primary"
+                ? "border-b-2 border-primary text-primary dark:border-white dark:text-white"
+                : "text-gray-500 hover:text-primary dark:text-gray-400 dark:hover:text-white"
             }`}
             onClick={() => setActiveTab("account")}
           >
@@ -133,7 +133,7 @@ const Settings = () => {
                   placeholder="Your name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none dark:border-strokedark dark:bg-boxdark"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none dark:border-strokedark dark:bg-boxdark dark:text-white"
                   required
                 />
               </div>
@@ -148,7 +148,7 @@ const Settings = () => {
                   placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none dark:border-strokedark dark:bg-boxdark"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none dark:border-strokedark dark:bg-boxdark dark:text-white"
                   required
                 />
               </div>
@@ -163,7 +163,7 @@ const Settings = () => {
                   placeholder="Tell us about yourself"
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none dark:border-strokedark dark:bg-boxdark"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none dark:border-strokedark dark:bg-boxdark dark:text-white"
                 />
               </div>
 
@@ -177,7 +177,7 @@ const Settings = () => {
                   placeholder="Your location"
                   value={locationState}
                   onChange={(e) => setLocationState(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none dark:border-strokedark dark:bg-boxdark"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none dark:border-strokedark dark:bg-boxdark dark:text-white"
                 />
               </div>
             </div>
@@ -201,7 +201,7 @@ const Settings = () => {
                   placeholder="+91XXXXXXXXXX"
                   value={mobileNumber}
                   onChange={(e) => setMobileNumber(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none dark:border-strokedark dark:bg-boxdark"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none dark:border-strokedark dark:bg-boxdark dark:text-white"
                   required
                 />
               </div>
@@ -235,7 +235,7 @@ const Settings = () => {
                     type="password"
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 dark:border-strokedark dark:bg-boxdark"
+                    className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 dark:border-strokedark dark:bg-boxdark dark:text-white"
                     required
                   />
                 </div>
@@ -247,7 +247,7 @@ const Settings = () => {
                     type="password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 dark:border-strokedark dark:bg-boxdark"
+                    className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 dark:border-strokedark dark:bg-boxdark dark:text-white"
                     required
                   />
                 </div>
@@ -259,7 +259,7 @@ const Settings = () => {
                     type="password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 dark:border-strokedark dark:bg-boxdark"
+                    className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 dark:border-strokedark dark:bg-boxdark dark:text-white"
                     required
                   />
                 </div>
