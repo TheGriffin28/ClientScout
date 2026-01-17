@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 import { getLeads, createLead, updateLead, deleteLead, Lead, LeadFormData } from "../services/leadService";
 import StatusBadge from "../components/common/StatusBadge";
 import flatpickr from "flatpickr";
@@ -16,6 +17,13 @@ const Leads = () => {
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [openActionId, setOpenActionId] = useState<string | null>(null);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalLeads, setTotalLeads] = useState(0);
+  const [limit] = useState(10);
+
   const [formData, setFormData] = useState<LeadFormData>({
     businessName: "",
     contactName: "",
@@ -31,9 +39,21 @@ const Leads = () => {
   const datePickerRef = useRef<HTMLInputElement>(null);
   const flatpickrInstance = useRef<flatpickr.Instance | null>(null);
   const initialDateRef = useRef<string>("");
+  const actionMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetchLeads();
+    fetchLeads(currentPage);
+  }, [currentPage]);
+
+  // Click outside listener for action menu
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (actionMenuRef.current && !actionMenuRef.current.contains(event.target as Node)) {
+        setOpenActionId(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   // Initialize date picker when modal opens (only once when open becomes true)
@@ -78,13 +98,29 @@ const Leads = () => {
     }
   }, [open]); // Only depend on open, not formData to prevent re-initialization
 
-  const fetchLeads = async () => {
+  const fetchLeads = async (page = 1) => {
     try {
       setLoading(true);
-      const data = await getLeads();
-      setLeads(data);
+      const data = await getLeads(page, limit);
+      
+      // Defensive check for data structure
+      if (data && "leads" in data) {
+        setLeads(data.leads || []);
+        setTotalPages(data.totalPages || 1);
+        setTotalLeads(data.totalLeads || 0);
+        setCurrentPage(data.currentPage || page);
+      } else if (Array.isArray(data)) {
+        // Fallback if API returns old array format
+        setLeads(data);
+        setTotalPages(1);
+        setTotalLeads(data.length);
+        setCurrentPage(1);
+      } else {
+        setLeads([]);
+      }
     } catch (error) {
       console.error("Error fetching leads:", error);
+      setLeads([]); // Ensure leads is never undefined
     } finally {
       setLoading(false);
     }
@@ -202,15 +238,17 @@ const Leads = () => {
 
       if (editingLead) {
         await updateLead(editingLead._id, submitData);
+        toast.success("Lead updated successfully!");
       } else {
         await createLead(submitData);
+        toast.success("Lead created successfully!");
       }
-      await fetchLeads();
+      await fetchLeads(currentPage);
       handleClose();
     } catch (error: any) {
       console.error("Error saving lead:", error);
       const errorMessage = error?.response?.data?.message || "Error saving lead. Please try again.";
-      alert(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -222,14 +260,20 @@ const Leads = () => {
     }
     try {
       await deleteLead(id);
-      await fetchLeads();
+      toast.success("Lead deleted successfully!");
+      await fetchLeads(currentPage);
     } catch (error) {
       console.error("Error deleting lead:", error);
-      alert("Error deleting lead. Please try again.");
+      toast.error("Error deleting lead. Please try again.");
     }
   };
 
-  const totalLeads = leads.length;
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+      setOpenActionId(null);
+    }
+  };
 
   return (
     <div className="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-8">
@@ -260,13 +304,13 @@ const Leads = () => {
         <div className="rounded-xl bg-white p-6 shadow-md dark:bg-white/[0.03]">
           <p className="text-center text-gray-600 dark:text-gray-300">Loading leads...</p>
         </div>
-      ) : leads.length === 0 ? (
+      ) : (leads || []).length === 0 ? (
         <div className="rounded-xl bg-white p-6 shadow-md dark:bg-white/[0.03]">
           <p className="text-center text-gray-600 dark:text-gray-300">No leads found. Create your first lead!</p>
         </div>
       ) : (
         <div className="rounded-xl bg-white shadow-md dark:bg-white/[0.03]">
-          <div className="w-full overflow-x-auto">
+          <div className="w-full overflow-x-auto overflow-y-visible min-h-[400px]">
             <table className="w-full min-w-[720px] text-left">
             <thead className="border-b border-gray-200 dark:border-strokedark">
               <tr>
@@ -288,11 +332,11 @@ const Leads = () => {
               </tr>
             </thead>
 
-            <tbody>
-              {leads.map((lead) => (
+            <tbody className="divide-y divide-gray-100 dark:divide-strokedark">
+              {(leads || []).map((lead, index) => (
                 <tr
                   key={lead._id}
-                  className="border-b border-gray-100 last:border-0 hover:bg-gray-50 dark:border-strokedark dark:hover:bg-white/[0.02]"
+                  className="hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors"
                 >
                   <td className="px-6 py-4 align-middle font-medium text-gray-800 dark:text-white">
                     <button
@@ -315,38 +359,38 @@ const Leads = () => {
                       : "-"}
                   </td>
                   <td className="px-6 py-4 align-middle">
-                    <div className="flex flex-wrap items-center gap-3">
-                      <div className="flex gap-2">
+                    <div className="flex items-center gap-3">
+                      <div className="flex gap-1">
                         {lead.email && (
                           <button
                             onClick={() => openEmail({ lead })}
-                            className="flex h-9 w-9 items-center justify-center rounded-lg text-blue-600 transition-colors hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-blue-600 transition-colors hover:bg-blue-50 dark:hover:bg-blue-900/20"
                             title="Send Email"
                           >
-                            <FaEnvelope className="h-4 w-4" />
+                            <FaEnvelope className="h-3.5 w-3.5" />
                           </button>
                         )}
                         {lead.phone && (
                           <>
                             <button
                               onClick={() => openWhatsApp({ lead })}
-                              className="flex h-9 w-9 items-center justify-center rounded-lg text-green-600 transition-colors hover:bg-green-50 dark:hover:bg-green-900/20"
+                              className="flex h-8 w-8 items-center justify-center rounded-lg text-green-600 transition-colors hover:bg-green-50 dark:hover:bg-green-900/20"
                               title="Send WhatsApp"
                             >
                               <FaWhatsapp className="h-4 w-4" />
                             </button>
                             <button
                               onClick={() => openCall(lead.phone!)}
-                              className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-600 transition-colors hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-700"
+                              className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-600 transition-colors hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-700"
                               title="Call"
                             >
-                              <FaPhoneAlt className="h-4 w-4" />
+                              <FaPhoneAlt className="h-3.5 w-3.5" />
                             </button>
                           </>
                         )}
                       </div>
 
-                      <div className="relative ml-1 border-l border-gray-200 pl-3 dark:border-gray-700">
+                      <div className="relative border-l border-gray-200 pl-2 dark:border-gray-700">
                         <button
                           type="button"
                           onClick={() =>
@@ -354,14 +398,23 @@ const Leads = () => {
                               openActionId === lead._id ? null : lead._id
                             )
                           }
-                          className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
+                          className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
+                            openActionId === lead._id 
+                              ? "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-white" 
+                              : "text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
+                          }`}
                           title="More actions"
                         >
-                          <FaEllipsisV className="h-4 w-4" />
+                          <FaEllipsisV className="h-3.5 w-3.5" />
                         </button>
 
                         {openActionId === lead._id && (
-                          <div className="absolute right-0 z-10 mt-2 w-40 rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-900">
+                          <div 
+                            ref={actionMenuRef}
+                            className={`absolute right-0 z-[100] mt-1 w-40 rounded-lg border border-gray-200 bg-white py-1 shadow-xl dark:border-gray-700 dark:bg-gray-900 ${
+                              index > (leads || []).length - 3 && (leads || []).length > 3 ? "bottom-full mb-1" : "top-full"
+                            }`}
+                          >
                             <button
                               type="button"
                               onClick={() => {
@@ -371,7 +424,7 @@ const Leads = () => {
                               className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
                             >
                               <FaEye className="h-4 w-4 text-blue-500" />
-                              <span>View</span>
+                              <span>View Details</span>
                             </button>
                             <button
                               type="button"
@@ -382,8 +435,9 @@ const Leads = () => {
                               className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
                             >
                               <FaEdit className="h-4 w-4 text-green-500" />
-                              <span>Edit</span>
+                              <span>Edit Lead</span>
                             </button>
+                            <div className="my-1 border-t border-gray-100 dark:border-gray-800"></div>
                             <button
                               type="button"
                               onClick={() => {
@@ -393,7 +447,7 @@ const Leads = () => {
                               className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/40"
                             >
                               <FaTrash className="h-4 w-4" />
-                              <span>Delete</span>
+                              <span>Delete Lead</span>
                             </button>
                           </div>
                         )}
@@ -404,6 +458,50 @@ const Leads = () => {
               ))}
             </tbody>
           </table>
+          </div>
+
+          {/* Pagination UI */}
+          <div className="flex items-center justify-between border-t border-gray-200 px-6 py-4 dark:border-strokedark">
+            <div className="flex items-center gap-2">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Showing <span className="font-medium text-gray-900 dark:text-white">{(currentPage - 1) * limit + 1}</span> to{" "}
+                <span className="font-medium text-gray-900 dark:text-white">
+                  {Math.min(currentPage * limit, totalLeads)}
+                </span>{" "}
+                of <span className="font-medium text-gray-900 dark:text-white">{totalLeads}</span> leads
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="flex h-9 items-center justify-center rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50 disabled:hover:bg-white dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-white/[0.04]"
+              >
+                Previous
+              </button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => handlePageChange(page)}
+                    className={`flex h-9 w-9 items-center justify-center rounded-lg text-sm font-medium transition-colors ${
+                      currentPage === page
+                        ? "bg-blue-600 text-white"
+                        : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-white/[0.04]"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="flex h-9 items-center justify-center rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50 disabled:hover:bg-white dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-white/[0.04]"
+              >
+                Next
+              </button>
+            </div>
           </div>
         </div>
       )}

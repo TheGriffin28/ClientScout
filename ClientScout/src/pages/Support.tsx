@@ -1,7 +1,30 @@
+import { useState } from "react";
+import toast from "react-hot-toast";
 import PageBreadcrumb from "../components/common/PageBreadCrumb";
 import PageMeta from "../components/common/PageMeta";
 
 export default function Support() {
+  const [subject, setSubject] = useState("");
+  const [message, setMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!subject || !message) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+
+    setIsSubmitting(true);
+    // Simulate API call
+    setTimeout(() => {
+      toast.success("Message sent successfully! We'll get back to you soon.");
+      setSubject("");
+      setMessage("");
+      setIsSubmitting(false);
+    }, 1000);
+  };
+
   return (
     <>
       <PageMeta
@@ -19,7 +42,7 @@ export default function Support() {
                 Contact Support
               </h3>
             </div>
-            <form action="#">
+            <form onSubmit={handleSubmit}>
               <div className="p-6.5">
                 <div className="mb-4.5">
                   <label className="mb-2.5 block text-black dark:text-white">
@@ -27,7 +50,9 @@ export default function Support() {
                   </label>
                   <input
                     type="text"
-                    placeholder="Select subject"
+                    placeholder="Enter subject"
+                    value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
                     className="w-full rounded border-[1.5px] border-stroke bg-transparent py-3 px-5 font-medium outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:focus:border-primary dark:text-white"
                   />
                 </div>
@@ -39,12 +64,18 @@ export default function Support() {
                   <textarea
                     rows={6}
                     placeholder="Type your message"
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
                     className="w-full rounded border-[1.5px] border-stroke bg-transparent py-3 px-5 font-medium outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:focus:border-primary dark:text-white"
                   ></textarea>
                 </div>
 
-                <button className="flex w-full justify-center rounded bg-primary p-3 font-medium text-gray hover:bg-opacity-90">
-                  Send Message
+                <button 
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex w-full justify-center rounded bg-blue-600 p-3 font-medium text-white hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 disabled:opacity-50 transition-colors"
+                >
+                  {isSubmitting ? "Sending..." : "Send Message"}
                 </button>
               </div>
             </form>

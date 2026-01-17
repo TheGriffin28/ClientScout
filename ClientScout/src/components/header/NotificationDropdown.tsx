@@ -38,7 +38,8 @@ export default function NotificationDropdown() {
   const fetchAndProcessNotifications = async () => {
     try {
       setLoading(true);
-      const leads = await getLeads();
+      const data = await getLeads();
+      const leads = Array.isArray(data) ? data : data.leads;
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 

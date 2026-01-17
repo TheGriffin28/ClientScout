@@ -12,10 +12,33 @@ export const createLead = async (req, res) => {
   res.status(201).json(lead);
 };
 
-/* GET ALL LEADS (USER-SPECIFIC) */
+/* GET ALL LEADS (USER-SPECIFIC) WITH PAGINATION */
 export const getLeads = async (req, res) => {
-  const leads = await Lead.find({ user: req.user._id }).sort({ createdAt: -1 });
-  res.json(leads);
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const query = { user: req.user._id };
+    
+    const [leads, total] = await Promise.all([
+      Lead.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Lead.countDocuments(query)
+    ]);
+
+    res.json({
+      leads,
+      currentPage: page,
+      totalPages: Math.ceil(total / limit),
+      totalLeads: total
+    });
+  } catch (error) {
+    console.error("Error fetching leads:", error);
+    res.status(500).json({ message: "Error fetching leads" });
+  }
 };
 
 /* GET SINGLE LEAD BY ID */

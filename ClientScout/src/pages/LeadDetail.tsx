@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 import { getLeadById, updateLead, analyzeLead, generateEmailDraft, generateWhatsAppDraft, logContact, Lead } from "../services/leadService";
 import StatusBadge from "../components/common/StatusBadge";
 import { FaEnvelope, FaWhatsapp, FaPhoneAlt, FaMagic, FaCopy, FaCheckCircle, FaCalendarPlus } from "react-icons/fa";
@@ -31,7 +32,7 @@ const LeadDetail = () => {
       setNotes(data.notes || "");
     } catch (error) {
       console.error("Error fetching lead:", error);
-      alert("Error loading lead. Please try again.");
+      toast.error("Error loading lead. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -42,10 +43,11 @@ const LeadDetail = () => {
     try {
       await updateLead(id, { notes });
       setIsEditingNotes(false);
+      toast.success("Notes saved!");
       await fetchLead();
     } catch (error) {
       console.error("Error saving notes:", error);
-      alert("Error saving notes. Please try again.");
+      toast.error("Error saving notes. Please try again.");
     }
   };
 
@@ -55,9 +57,10 @@ const LeadDetail = () => {
       setAnalyzing(true);
       const updatedLead = await analyzeLead(id);
       setLead(updatedLead);
+      toast.success("AI Analysis complete!");
     } catch (error) {
       console.error("Error analyzing lead:", error);
-      alert("Error analyzing lead. Please try again.");
+      toast.error("Error analyzing lead. Please try again.");
     } finally {
       setAnalyzing(false);
     }
@@ -69,9 +72,10 @@ const LeadDetail = () => {
       setGeneratingEmail(true);
       const updatedLead = await generateEmailDraft(id);
       setLead(updatedLead);
+      toast.success("Email draft generated!");
     } catch (error) {
       console.error("Error generating email:", error);
-      alert("Error generating email draft.");
+      toast.error("Error generating email draft.");
     } finally {
       setGeneratingEmail(false);
     }
@@ -83,9 +87,10 @@ const LeadDetail = () => {
       setGeneratingWhatsApp(true);
       const updatedLead = await generateWhatsAppDraft(id);
       setLead(updatedLead);
+      toast.success("WhatsApp draft generated!");
     } catch (error) {
       console.error("Error generating WhatsApp:", error);
-      alert("Error generating WhatsApp draft.");
+      toast.error("Error generating WhatsApp draft.");
     } finally {
       setGeneratingWhatsApp(false);
     }
@@ -96,16 +101,16 @@ const LeadDetail = () => {
     try {
       const updatedLead = await logContact(id);
       setLead(updatedLead);
-      alert("Contact logged! Next follow-up set for 3 days.");
+      toast.success("Contact logged! Next follow-up set for 3 days.");
     } catch (error) {
       console.error("Error logging contact:", error);
-      alert("Error logging contact.");
+      toast.error("Error logging contact.");
     }
   };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    alert("Copied to clipboard!");
+    toast.success("Copied to clipboard!");
   };
 
   const formatDate = (dateString: string | undefined): string => {

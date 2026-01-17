@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "react-router";
+import toast from "react-hot-toast";
 import PageBreadcrumb from "../components/common/PageBreadCrumb";
 import PageMeta from "../components/common/PageMeta";
 import { useUser } from "../context/UserContext";
@@ -55,9 +56,9 @@ const Settings = () => {
         location: locationState 
       });
       await refreshUser();
-      alert("Profile updated successfully!");
+      toast.success("Profile updated successfully!");
     } catch (error: any) {
-      alert(error.response?.data?.message || "Failed to update profile");
+      toast.error(error.response?.data?.message || "Failed to update profile");
     } finally {
       setIsUpdatingProfile(false);
     }
@@ -66,7 +67,7 @@ const Settings = () => {
   const handlePasswordUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
-      alert("Passwords do not match!");
+      toast.error("Passwords do not match!");
       return;
     }
     setIsUpdatingPassword(true);
@@ -75,9 +76,9 @@ const Settings = () => {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-      alert("Password updated successfully!");
+      toast.success("Password updated successfully!");
     } catch (error: any) {
-      alert(error.response?.data?.message || "Failed to update password");
+      toast.error(error.response?.data?.message || "Failed to update password");
     } finally {
       setIsUpdatingPassword(false);
     }

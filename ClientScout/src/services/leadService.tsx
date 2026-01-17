@@ -63,8 +63,15 @@ export interface LeadFormData {
   nextFollowUp?: string;
 }
 
-export const getLeads = async (): Promise<Lead[]> => {
-  const res = await api.get("/leads");
+export interface PaginatedLeads {
+  leads: Lead[];
+  currentPage: number;
+  totalPages: number;
+  totalLeads: number;
+}
+
+export const getLeads = async (page = 1, limit = 10): Promise<PaginatedLeads | Lead[]> => {
+  const res = await api.get(`/leads?page=${page}&limit=${limit}`);
   return res.data;
 };
 

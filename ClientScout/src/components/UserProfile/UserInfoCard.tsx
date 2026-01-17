@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import toast from "react-hot-toast";
 import { useModal } from "../../hooks/useModal";
 import { Modal } from "../ui/modal";
 import Button from "../ui/button/Button";
@@ -51,10 +52,10 @@ export default function UserInfoCard() {
     try {
       await api.put("/auth/profile", formData);
       await refreshUser();
-      alert("Profile updated successfully!");
+      toast.success("Profile updated successfully!");
       closeModal();
     } catch (error: any) {
-      alert(error.response?.data?.message || "Failed to update profile");
+      toast.error(error.response?.data?.message || "Failed to update profile");
     } finally {
       setIsSaving(false);
     }

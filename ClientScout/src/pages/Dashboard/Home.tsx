@@ -23,7 +23,8 @@ export default function Home() {
 
   const fetchData = async () => {
     try {
-      const allLeads = await getLeads();
+      const data = await getLeads();
+      const allLeads = Array.isArray(data) ? data : data.leads;
       processData(allLeads);
     } catch (error) {
       console.error("Failed to fetch leads", error);

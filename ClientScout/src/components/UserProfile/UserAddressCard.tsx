@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import toast from "react-hot-toast";
 import { useModal } from "../../hooks/useModal";
 import { Modal } from "../ui/modal";
 import Button from "../ui/button/Button";
@@ -44,9 +45,10 @@ export default function UserAddressCard() {
     try {
       await api.put("/auth/profile", { address: formData });
       await refreshUser();
+      toast.success("Address updated successfully!");
       closeModal();
     } catch (error: any) {
-      alert(error.response?.data?.message || "Failed to update address");
+      toast.error(error.response?.data?.message || "Failed to update address");
     } finally {
       setIsSaving(false);
     }

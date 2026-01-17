@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import toast from "react-hot-toast";
 import { FaPhoneAlt } from "react-icons/fa";
 import { getFollowUps, updateLead, Lead } from "../services/leadService";
 
@@ -69,9 +70,10 @@ const FollowUps = () => {
       await updateLead(leadId, { status: "Contacted", nextFollowUp: "" });
       // Remove the follow-up from the list since it's been contacted
       setFollowUps((prev) => prev.filter((lead) => lead._id !== leadId));
+      toast.success("Lead marked as contacted!");
     } catch (error) {
       console.error("Error updating lead status:", error);
-      alert("Failed to mark as contacted. Please try again.");
+      toast.error("Failed to mark as contacted. Please try again.");
     }
   };
 

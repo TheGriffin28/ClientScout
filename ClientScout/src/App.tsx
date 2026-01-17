@@ -13,6 +13,7 @@ import LeadDetail from "./pages/LeadDetail";
 
 import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
+import { Toaster } from "react-hot-toast";
 import Home from "./pages/Dashboard/Home";
 import Support from "./pages/Support";
 
@@ -20,6 +21,7 @@ export default function App() {
   return (
     <>
       <ScrollToTop />
+      <Toaster position="top-right" reverseOrder={false} />
       <Routes>
         {/* Auth Layout */}
         <Route path="/signin" element={<SignIn />} />
