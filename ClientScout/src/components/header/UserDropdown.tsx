@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { DropdownItem } from "../ui/dropdown/DropdownItem";
 import { Dropdown } from "../ui/dropdown/Dropdown";
 import { Link, useNavigate } from "react-router";
@@ -20,6 +20,7 @@ export default function UserDropdown() {
   function handleLogout(e: React.MouseEvent) {
     e.preventDefault();
     localStorage.removeItem("token");
+    sessionStorage.removeItem("token");
     setUser(null);
     navigate("/signin");
   }

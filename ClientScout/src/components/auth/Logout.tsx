@@ -5,8 +5,9 @@ export default function Logout() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Clear token from localStorage
+    // Clear token from both storages
     localStorage.removeItem("token");
+    sessionStorage.removeItem("token");
 
     // Redirect to login page
     navigate("/signin");

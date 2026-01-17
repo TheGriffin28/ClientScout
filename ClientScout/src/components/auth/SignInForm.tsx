@@ -25,7 +25,13 @@ export default function SignInForm() {
       const response = await api.post("/auth/login", { email, password });
       // Store token and redirect to dashboard
       if (response.data.token) {
-        localStorage.setItem("token", response.data.token);
+        if (isChecked) {
+          localStorage.setItem("token", response.data.token);
+          sessionStorage.removeItem("token"); // Clean up if it was there
+        } else {
+          sessionStorage.setItem("token", response.data.token);
+          localStorage.removeItem("token"); // Clean up if it was there
+        }
         
         // Refresh user context
         await refreshUser();

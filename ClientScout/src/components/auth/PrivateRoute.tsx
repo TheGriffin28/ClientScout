@@ -9,7 +9,7 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
-    const tokenExists = !!localStorage.getItem("token");
+    const tokenExists = !!(localStorage.getItem("token") || sessionStorage.getItem("token"));
     console.log("Token exists:", tokenExists);
 
     if (tokenExists) {

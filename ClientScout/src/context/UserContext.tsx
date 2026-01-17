@@ -37,7 +37,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refreshUser = async () => {
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
       if (!token) {
         setUser(null);
         setLoading(false);
@@ -50,7 +50,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error("Failed to fetch user:", error);
       setUser(null);
       // Optional: clear token if invalid
-      // localStorage.removeItem("token");
+      localStorage.removeItem("token");
+      sessionStorage.removeItem("token");
     } finally {
       setLoading(false);
     }
