@@ -24,9 +24,21 @@ export const protect = async (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({ message: "User not found" });
     }
+
+    if (!req.user.isActive) {
+      return res.status(403).json({ message: "Your account has been temporarily disabled" });
+    }
     
     next();
   } catch (error) {
     res.status(401).json({ message: "Invalid token" });
+  }
+};
+
+export const admin = (req, res, next) => {
+  if (req.user && req.user.role === "admin") {
+    next();
+  } else {
+    res.status(403).json({ message: "Not authorized as an admin" });
   }
 };

@@ -1,6 +1,9 @@
 import Lead from "../models/Lead.js";
+import User from "../models/User.js";
+import Config from "../models/Config.js";
 import mongoose from "mongoose";
 import { analyzeWebsite } from "../services/aiService.js";
+import { logAdminAction } from "../utils/logger.js";
 
 /* CREATE LEAD */
 export const createLead = async (req, res) => {
@@ -209,6 +212,12 @@ export const analyzeLead = async (req, res) => {
     return res.status(400).json({ message: "Invalid lead ID format" });
   }
 
+  // Check Feature Flag
+  const aiConfig = await Config.findOne({ key: "enableAIEnrichment" });
+  if (aiConfig && aiConfig.value === false) {
+    return res.status(403).json({ message: "AI Enrichment is currently disabled by administrator" });
+  }
+
   const lead = await Lead.findById(req.params.id);
 
   if (!lead) {
@@ -245,9 +254,23 @@ export const analyzeLead = async (req, res) => {
       { new: true }
     );
 
+    // Increment AI Usage Count and store lastAIUsedAt
+    await User.findByIdAndUpdate(req.user._id, { 
+      $inc: { aiUsageCount: 1 },
+      lastAIUsedAt: new Date()
+    });
+
     res.json(updatedLead);
   } catch (error) {
     console.error("Analysis failed:", error);
+    
+    // Log AI Error
+    await logAdminAction({
+      action: "AI_ERROR",
+      userId: req.user._id,
+      details: `Analysis failed for lead ${req.params.id}: ${error.message}`
+    });
+
     res.status(500).json({ message: "AI Analysis failed", error: error.message });
   }
 };
@@ -289,6 +312,12 @@ export const generateEmail = async (req, res) => {
     return res.status(400).json({ message: "Invalid lead ID format" });
   }
 
+  // Check Feature Flag (using same AI enrichment flag for drafts)
+  const aiConfig = await Config.findOne({ key: "enableAIEnrichment" });
+  if (aiConfig && aiConfig.value === false) {
+    return res.status(403).json({ message: "AI features are currently disabled by administrator" });
+  }
+
   const lead = await Lead.findById(req.params.id);
 
   if (!lead || lead.user.toString() !== req.user._id.toString()) {
@@ -314,9 +343,23 @@ export const generateEmail = async (req, res) => {
     };
     await lead.save();
 
+    // Increment AI Usage Count and store lastAIUsedAt
+    await User.findByIdAndUpdate(req.user._id, { 
+      $inc: { aiUsageCount: 1 },
+      lastAIUsedAt: new Date()
+    });
+
     res.json(lead);
   } catch (error) {
     console.error("Email generation failed:", error);
+    
+    // Log AI Error
+    await logAdminAction({
+      action: "AI_ERROR",
+      userId: req.user._id,
+      details: `Email generation failed for lead ${req.params.id}: ${error.message}`
+    });
+
     res.status(500).json({ message: "Failed to generate email", error: error.message });
   }
 };
@@ -325,6 +368,12 @@ export const generateEmail = async (req, res) => {
 export const generateWhatsApp = async (req, res) => {
   if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
     return res.status(400).json({ message: "Invalid lead ID format" });
+  }
+
+  // Check Feature Flag
+  const waConfig = await Config.findOne({ key: "enableWhatsAppDrafts" });
+  if (waConfig && waConfig.value === false) {
+    return res.status(403).json({ message: "WhatsApp Drafts are currently disabled by administrator" });
   }
 
   const lead = await Lead.findById(req.params.id);
@@ -350,9 +399,23 @@ export const generateWhatsApp = async (req, res) => {
     };
     await lead.save();
 
+    // Increment AI Usage Count and store lastAIUsedAt
+    await User.findByIdAndUpdate(req.user._id, { 
+      $inc: { aiUsageCount: 1 },
+      lastAIUsedAt: new Date()
+    });
+
     res.json(lead);
   } catch (error) {
     console.error("WhatsApp generation failed:", error);
+    
+    // Log AI Error
+    await logAdminAction({
+      action: "AI_ERROR",
+      userId: req.user._id,
+      details: `WhatsApp generation failed for lead ${req.params.id}: ${error.message}`
+    });
+
     res.status(500).json({ message: "Failed to generate WhatsApp message", error: error.message });
   }
 };

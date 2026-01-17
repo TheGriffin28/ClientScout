@@ -20,6 +20,11 @@ const userSchema = new mongoose.Schema(
       postalCode: { type: String, default: "" },
       taxId: { type: String, default: "" },
     },
+    role: { type: String, enum: ["user", "admin"], default: "user" },
+    isActive: { type: Boolean, default: true },
+    lastLoginAt: { type: Date },
+    aiUsageCount: { type: Number, default: 0 },
+    lastAIUsedAt: { type: Date },
     resetPasswordToken: String,
     resetPasswordExpires: Date
   },

@@ -16,6 +16,11 @@ import { ScrollToTop } from "./components/common/ScrollToTop";
 import { Toaster } from "react-hot-toast";
 import Home from "./pages/Dashboard/Home";
 import Support from "./pages/Support";
+import AdminDashboard from "./pages/Admin/Dashboard";
+import AdminUsers from "./pages/Admin/Users";
+import AdminSettings from "./pages/Admin/Settings";
+import AdminLogs from "./pages/Admin/Logs";
+import AdminRoute from "./components/auth/AdminRoute";
 
 export default function App() {
   return (
@@ -38,7 +43,41 @@ export default function App() {
           <Route path="/follow-ups" element={<FollowUps />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/support" element={<Support />} />
-        </Route>
+          
+          {/* Admin Routes */}
+          <Route 
+            path="/admin" 
+            element={
+              <AdminRoute>
+                <AdminDashboard />
+              </AdminRoute>
+            } 
+          />
+          <Route 
+            path="/admin/users" 
+            element={
+              <AdminRoute>
+                <AdminUsers />
+               </AdminRoute>
+             } 
+           />
+           <Route 
+              path="/admin/settings" 
+              element={
+                <AdminRoute>
+                  <AdminSettings />
+                </AdminRoute>
+              } 
+            />
+            <Route 
+              path="/admin/logs" 
+              element={
+                <AdminRoute>
+                  <AdminLogs />
+                </AdminRoute>
+              } 
+            />
+           </Route>
 
         {/* Fallback Route */}
         <Route path="*" element={<NotFound />} />

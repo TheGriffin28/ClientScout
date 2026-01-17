@@ -5,6 +5,11 @@ interface User {
   id: string;
   name: string;
   email: string;
+  role: "admin" | "user";
+  isActive: boolean;
+  lastLoginAt?: string;
+  aiUsageCount: number;
+  lastAIUsedAt?: string;
   mobileNumber: string;
   bio?: string;
   location?: string;

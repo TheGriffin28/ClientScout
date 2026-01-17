@@ -36,8 +36,12 @@ export default function SignInForm() {
         // Refresh user context
         await refreshUser();
 
-        // Redirect
-        navigate("/");
+        // Redirect based on role
+        if (response.data.role === "admin") {
+          navigate("/admin");
+        } else {
+          navigate("/");
+        }
       } else {
         setError("Login failed: Token is missing in the response");
       }

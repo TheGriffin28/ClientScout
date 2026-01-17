@@ -10,8 +10,11 @@ import {
   HorizontaLDots,
   PlugInIcon,
   UserCircleIcon,
+  PieChartIcon,
+  ListIcon,
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
+import { useUser } from "../context/UserContext";
 
 type NavItem = {
   name: string;
@@ -52,6 +55,7 @@ const navItems: NavItem[] = [
 const othersItems: NavItem[] = [];
 
 const AppSidebar: React.FC = () => {
+  const { user } = useUser();
   const {
     isExpanded,
     isMobileOpen,
@@ -61,6 +65,14 @@ const AppSidebar: React.FC = () => {
   } = useSidebar();
   const location = useLocation();
 
+  const menuItems = user?.role === "admin" ? [] : navItems;
+  const adminItems: NavItem[] = [
+    { name: "Dashboard", path: "/admin", icon: <PieChartIcon /> },
+    { name: "Users", path: "/admin/users", icon: <UserCircleIcon /> },
+    { name: "Settings", path: "/admin/settings", icon: <PlugInIcon /> },
+    { name: "Activity Logs", path: "/admin/logs", icon: <ListIcon /> },
+  ];
+
   const handleLinkClick = () => {
     if (isMobileOpen) {
       toggleMobileSidebar();
@@ -68,7 +80,7 @@ const AppSidebar: React.FC = () => {
   };
 
   const [openSubmenu, setOpenSubmenu] = useState<{
-    type: "main" | "others";
+    type: "main" | "others" | "admin";
     index: number;
   } | null>(null);
   const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>(
@@ -84,14 +96,14 @@ const AppSidebar: React.FC = () => {
 
   useEffect(() => {
     let submenuMatched = false;
-    ["main", "others"].forEach((menuType) => {
-      const items = menuType === "main" ? navItems : othersItems;
+    ["main", "admin", "others"].forEach((menuType) => {
+      const items = menuType === "main" ? menuItems : menuType === "admin" ? adminItems : othersItems;
       items.forEach((nav, index) => {
         if (nav.subItems) {
           nav.subItems.forEach((subItem) => {
             if (isActive(subItem.path)) {
               setOpenSubmenu({
-                type: menuType as "main" | "others",
+                type: menuType as "main" | "others" | "admin",
                 index,
               });
               submenuMatched = true;
@@ -118,7 +130,7 @@ const AppSidebar: React.FC = () => {
     }
   }, [openSubmenu]);
 
-  const handleSubmenuToggle = (index: number, menuType: "main" | "others") => {
+  const handleSubmenuToggle = (index: number, menuType: "main" | "others" | "admin") => {
     setOpenSubmenu((prevOpenSubmenu) => {
       if (
         prevOpenSubmenu &&
@@ -131,7 +143,7 @@ const AppSidebar: React.FC = () => {
     });
   };
 
-  const renderMenuItems = (items: NavItem[], menuType: "main" | "others") => (
+  const renderMenuItems = (items: NavItem[], menuType: "main" | "others" | "admin") => (
     <ul className="flex flex-col gap-4">
       {items.map((nav, index) => (
         <li key={nav.name}>
@@ -307,23 +319,43 @@ const AppSidebar: React.FC = () => {
       <div className="flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar">
         <nav className="mb-6">
           <div className="flex flex-col gap-4">
-            <div>
-              <h2
-                className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${
-                  !isExpanded && !isHovered
-                    ? "lg:justify-center"
-                    : "justify-start"
-                }`}
-              >
-                {isExpanded || isHovered || isMobileOpen ? (
-                  "Menu"
-                ) : (
-                  <HorizontaLDots className="size-6" />
-                )}
-              </h2>
-              {renderMenuItems(navItems, "main")}
-            </div>
-            
+            {menuItems.length > 0 && (
+              <div>
+                <h2
+                  className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${
+                    !isExpanded && !isHovered
+                      ? "lg:justify-center"
+                      : "justify-start"
+                  }`}
+                >
+                  {isExpanded || isHovered || isMobileOpen ? (
+                    ""
+                  ) : (
+                    <HorizontaLDots className="size-6" />
+                  )}
+                </h2>
+                {renderMenuItems(menuItems, "main")}
+              </div>
+            )}
+
+            {user?.role === "admin" && (
+              <div>
+                <h2
+                  className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${
+                    !isExpanded && !isHovered
+                      ? "lg:justify-center"
+                      : "justify-start"
+                  }`}
+                >
+                  {isExpanded || isHovered || isMobileOpen ? (
+                    ""
+                  ) : (
+                    <HorizontaLDots className="size-6" />
+                  )}
+                </h2>
+                {renderMenuItems(adminItems, "admin")}
+              </div>
+            )}
           </div>
         </nav>
       </div>

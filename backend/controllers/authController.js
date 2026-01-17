@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
+import { logAdminAction } from "../utils/logger.js";
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "7d" });
@@ -31,6 +32,13 @@ export const registerUser = async (req, res) => {
 
   const token = generateToken(user._id);
 
+  // Log user signup
+  await logAdminAction({
+    action: "USER_SIGNUP",
+    userId: user._id,
+    details: { name: user.name, email: user.email }
+  });
+
   res.cookie("token", token, {
     httpOnly: true,
     sameSite: "lax", // Changed from "strict" to "lax" for better localhost compatibility
@@ -43,6 +51,10 @@ export const registerUser = async (req, res) => {
     name: user.name,
     email: user.email,
     mobileNumber: user.mobileNumber,
+    role: user.role,
+    isActive: user.isActive,
+    aiUsageCount: user.aiUsageCount,
+    lastAIUsedAt: user.lastAIUsedAt,
     token // Include token in response for header-based auth
   });
 };
@@ -59,12 +71,29 @@ export const loginUser = async (req, res) => {
     return res.status(401).json({ message: "Invalid credentials" });
   }
 
+  if (!user.isActive) {
+    return res.status(403).json({ message: "Your account has been suspended. Please contact support." });
+  }
+
   const isPasswordValid = await bcrypt.compare(password, user.password);
   if (!isPasswordValid) {
     return res.status(401).json({ message: "Invalid credentials" });
   }
 
+  // Update last login
+  user.lastLoginAt = new Date();
+  await user.save();
+
   const token = generateToken(user._id);
+
+  // Log admin login
+  if (user.role === "admin") {
+    await logAdminAction({
+      action: "ADMIN_LOGIN",
+      adminId: user._id,
+      details: { email: user.email }
+    });
+  }
 
   res.cookie("token", token, {
     httpOnly: true,
@@ -78,6 +107,10 @@ export const loginUser = async (req, res) => {
     name: user.name,
     email: user.email,
     mobileNumber: user.mobileNumber,
+    role: user.role,
+    isActive: user.isActive,
+    aiUsageCount: user.aiUsageCount,
+    lastAIUsedAt: user.lastAIUsedAt,
     token // Include the token in the response
   });
 };
@@ -88,6 +121,11 @@ export const getMe = async (req, res) => {
     name: req.user.name,
     email: req.user.email,
     mobileNumber: req.user.mobileNumber,
+    role: req.user.role,
+    isActive: req.user.isActive,
+    aiUsageCount: req.user.aiUsageCount,
+    lastAIUsedAt: req.user.lastAIUsedAt,
+    lastLoginAt: req.user.lastLoginAt,
     bio: req.user.bio,
     location: req.user.location,
     socialLinks: req.user.socialLinks,
@@ -130,6 +168,11 @@ export const updateProfile = async (req, res) => {
         name: updatedUser.name,
         email: updatedUser.email,
         mobileNumber: updatedUser.mobileNumber,
+        role: updatedUser.role,
+        isActive: updatedUser.isActive,
+        aiUsageCount: updatedUser.aiUsageCount,
+        lastAIUsedAt: updatedUser.lastAIUsedAt,
+        lastLoginAt: updatedUser.lastLoginAt,
         bio: updatedUser.bio,
         location: updatedUser.location,
         socialLinks: updatedUser.socialLinks,

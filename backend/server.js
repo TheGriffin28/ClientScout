@@ -5,6 +5,7 @@ import cookieParser from "cookie-parser";
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import leadRoutes from "./routes/leadRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
 import { setupCronJobs } from "./cron/followUpCron.js";
 
 
@@ -36,7 +37,7 @@ app.use(cors({
     callback(null, true);
   },
   credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
@@ -49,6 +50,7 @@ app.use(cors({
 
 app.use("/api/auth", authRoutes);
 app.use("/api/leads", leadRoutes);
+app.use("/api/admin", adminRoutes);
 
 app.get("/", (req, res) => {
   res.send("ClientScout API running 🚀");
