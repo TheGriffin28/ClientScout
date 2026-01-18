@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import { getLeadById, updateLead, analyzeLead, generateEmailDraft, generateWhatsAppDraft, logContact, Lead } from "../services/leadService";
+import { getLeadById, updateLead, analyzeLead, generateEmailDraft, sendLeadEmail, generateWhatsAppDraft, logContact, Lead } from "../services/leadService";
 import StatusBadge from "../components/common/StatusBadge";
-import { FaEnvelope, FaWhatsapp, FaPhoneAlt, FaMagic, FaCopy, FaCheckCircle, FaCalendarPlus } from "react-icons/fa";
-import { openEmail, openWhatsApp, openCall } from "../services/outreachService";
+import { FaEnvelope, FaWhatsapp, FaPhoneAlt, FaMagic, FaCopy, FaCheckCircle, FaCalendarPlus, FaRegPaperPlane, FaSync } from "react-icons/fa";
+import { openWhatsApp, openCall } from "../services/outreachService";
+import { Modal } from "../components/ui/modal";
+import { ProfileSkeleton } from "../components/ui/Skeleton";
 
 const LeadDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -13,9 +15,20 @@ const LeadDetail = () => {
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
   const [generatingEmail, setGeneratingEmail] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
   const [generatingWhatsApp, setGeneratingWhatsApp] = useState(false);
   const [notes, setNotes] = useState("");
   const [isEditingNotes, setIsEditingNotes] = useState(false);
+
+  const [isEditingEmail, setIsEditingEmail] = useState(false);
+  const [editedEmailSubject, setEditedEmailSubject] = useState("");
+  const [editedEmailBody, setEditedEmailBody] = useState("");
+
+  const [isEditingWhatsApp, setIsEditingWhatsApp] = useState(false);
+  const [editedWhatsAppBody, setEditedWhatsAppBody] = useState("");
+
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+  const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -81,6 +94,24 @@ const LeadDetail = () => {
     }
   };
 
+  const handleSendEmail = async () => {
+    if (!id || !lead?.emailDraft) return;
+    
+    try {
+      setSendingEmail(true);
+      await sendLeadEmail(id, lead.emailDraft.subject, lead.emailDraft.body);
+      toast.success("Email sent successfully!");
+      setIsEmailModalOpen(false);
+      // Refresh lead to update contact history
+      await fetchLead();
+    } catch (error: any) {
+      console.error("Error sending email:", error);
+      toast.error(error.response?.data?.message || "Failed to send email.");
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
   const handleGenerateWhatsApp = async () => {
     if (!id) return;
     try {
@@ -106,6 +137,79 @@ const LeadDetail = () => {
       console.error("Error logging contact:", error);
       toast.error("Error logging contact.");
     }
+  };
+
+  const handleEditEmail = () => {
+    if (lead?.emailDraft) {
+      setEditedEmailSubject(lead.emailDraft.subject);
+      setEditedEmailBody(lead.emailDraft.body);
+      setIsEditingEmail(true);
+    }
+  };
+
+  const handleOpenEmailModal = () => {
+    if (lead?.emailDraft) {
+      setEditedEmailSubject(lead.emailDraft.subject);
+      setEditedEmailBody(lead.emailDraft.body);
+    }
+    setIsEmailModalOpen(true);
+    setIsEditingEmail(false);
+  };
+
+  const handleSaveEmailDraft = async () => {
+    if (!id || !lead) return;
+    try {
+      const updatedLead = await updateLead(id, {
+        emailDraft: {
+          subject: editedEmailSubject,
+          body: editedEmailBody,
+        },
+      });
+      setLead(updatedLead);
+      setIsEditingEmail(false);
+      toast.success("Email draft updated!");
+    } catch (error) {
+      console.error("Error updating email draft:", error);
+      toast.error("Failed to update email draft.");
+    }
+  };
+
+  const handleEditWhatsApp = () => {
+    if (lead?.whatsappDraft) {
+      setEditedWhatsAppBody(lead.whatsappDraft.body);
+      setIsEditingWhatsApp(true);
+    }
+  };
+
+  const handleOpenWhatsAppModal = () => {
+    if (lead?.whatsappDraft) {
+      setEditedWhatsAppBody(lead.whatsappDraft.body);
+    }
+    setIsWhatsAppModalOpen(true);
+    setIsEditingWhatsApp(false);
+  };
+
+  const handleSaveWhatsAppDraft = async () => {
+    if (!id || !lead) return;
+    try {
+      const updatedLead = await updateLead(id, {
+        whatsappDraft: {
+          body: editedWhatsAppBody,
+        },
+      });
+      setLead(updatedLead);
+      setIsEditingWhatsApp(false);
+      toast.success("WhatsApp draft updated!");
+    } catch (error) {
+      console.error("Error updating WhatsApp draft:", error);
+      toast.error("Failed to update WhatsApp draft.");
+    }
+  };
+
+  const handleSendWhatsApp = () => {
+    if (!lead) return;
+    openWhatsApp({ lead, customMessage: editedWhatsAppBody || lead.whatsappDraft?.body });
+    setIsWhatsAppModalOpen(false);
   };
 
   const copyToClipboard = (text: string) => {
@@ -140,9 +244,7 @@ const LeadDetail = () => {
   if (loading) {
     return (
       <div className="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-8">
-        <div className="rounded-xl bg-white p-6 text-center shadow-md dark:bg-white/[0.03]">
-          <p className="text-gray-600 dark:text-gray-300">Loading lead details...</p>
-        </div>
+        <ProfileSkeleton />
       </div>
     );
   }
@@ -240,7 +342,7 @@ const LeadDetail = () => {
 
         {lead.email && (
           <button
-            onClick={() => openEmail({ lead })}
+            onClick={handleOpenEmailModal}
             className="flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700"
           >
             <FaEnvelope className="h-5 w-5" />
@@ -251,7 +353,7 @@ const LeadDetail = () => {
         {lead.phone && (
           <>
             <button
-              onClick={() => openWhatsApp({ lead })}
+              onClick={handleOpenWhatsAppModal}
               className="flex items-center gap-2 rounded-lg bg-green-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-green-700"
             >
               <FaWhatsapp className="h-5 w-5" />
@@ -275,6 +377,226 @@ const LeadDetail = () => {
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* Email Draft Modal */}
+        <Modal
+          isOpen={isEmailModalOpen}
+          onClose={() => setIsEmailModalOpen(false)}
+          className="max-w-2xl p-6"
+        >
+          <div className="mb-4 flex items-center justify-between border-b pb-4 dark:border-gray-700">
+            <h3 className="text-xl font-bold text-gray-800 dark:text-white">
+              AI Email Outreach
+            </h3>
+          </div>
+
+          <div className="space-y-4">
+            {!lead.emailDraft ? (
+              <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-8 text-center dark:bg-gray-800">
+                <p className="mb-4 text-gray-500">No email draft generated yet.</p>
+                <button
+                  onClick={handleGenerateEmail}
+                  disabled={generatingEmail}
+                  className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {generatingEmail ? (
+                    "Generating..."
+                  ) : (
+                    <>
+                      <FaMagic /> Generate AI Draft
+                    </>
+                  )}
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-gray-500">
+                    Subject
+                  </label>
+                  {isEditingEmail ? (
+                    <input
+                      type="text"
+                      value={editedEmailSubject}
+                      onChange={(e) => setEditedEmailSubject(e.target.value)}
+                      className="w-full rounded-lg border border-gray-200 bg-white p-3 text-sm font-medium text-gray-800 focus:border-blue-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                    />
+                  ) : (
+                    <p className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm font-medium text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-white">
+                      {lead.emailDraft.subject}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-gray-500">
+                    Body
+                  </label>
+                  {isEditingEmail ? (
+                    <textarea
+                      value={editedEmailBody}
+                      onChange={(e) => setEditedEmailBody(e.target.value)}
+                      rows={10}
+                      className="w-full rounded-lg border border-gray-200 bg-white p-3 text-sm text-gray-700 focus:border-blue-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                    />
+                  ) : (
+                    <div className="max-h-[300px] overflow-y-auto rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm leading-relaxed text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                      <p className="whitespace-pre-wrap">{lead.emailDraft.body}</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t dark:border-gray-700">
+                  <div className="flex gap-2">
+                    {!isEditingEmail && (
+                      <button
+                        onClick={handleEditEmail}
+                        className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+                      >
+                        Edit
+                      </button>
+                    )}
+                    <button
+                      onClick={handleGenerateEmail}
+                      disabled={generatingEmail}
+                      className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+                    >
+                      <FaSync className={generatingEmail ? "animate-spin" : ""} />
+                      {generatingEmail ? "Generating..." : "Regenerate"}
+                    </button>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setIsEmailModalOpen(false)}
+                      className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+                    >
+                      Cancel
+                    </button>
+                    {isEditingEmail ? (
+                      <button
+                        onClick={handleSaveEmailDraft}
+                        className="flex items-center gap-2 rounded-lg bg-blue-600 px-6 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                      >
+                        Save & Preview
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleSendEmail}
+                        disabled={sendingEmail}
+                        className="flex items-center gap-2 rounded-lg bg-blue-600 px-6 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                      >
+                        {sendingEmail ? (
+                          "Sending..."
+                        ) : (
+                          <>
+                            <FaRegPaperPlane /> Send Mail
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </Modal>
+
+        {/* WhatsApp Draft Modal */}
+        <Modal
+          isOpen={isWhatsAppModalOpen}
+          onClose={() => setIsWhatsAppModalOpen(false)}
+          className="max-w-2xl p-6"
+        >
+          <div className="mb-4 flex items-center justify-between border-b pb-4 dark:border-gray-700">
+            <h3 className="text-xl font-bold text-gray-800 dark:text-white">
+              WhatsApp Outreach
+            </h3>
+          </div>
+
+          <div className="space-y-4">
+            {!lead.whatsappDraft ? (
+              <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-8 text-center dark:bg-gray-800">
+                <p className="mb-4 text-gray-500">No WhatsApp draft generated yet.</p>
+                <button
+                  onClick={handleGenerateWhatsApp}
+                  disabled={generatingWhatsApp}
+                  className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+                >
+                  {generatingWhatsApp ? (
+                    "Generating..."
+                  ) : (
+                    <>
+                      <FaMagic /> Generate AI Draft
+                    </>
+                  )}
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-gray-500">
+                    Message Body
+                  </label>
+                  {isEditingWhatsApp ? (
+                    <textarea
+                      value={editedWhatsAppBody}
+                      onChange={(e) => setEditedWhatsAppBody(e.target.value)}
+                      rows={10}
+                      className="w-full rounded-lg border border-gray-200 bg-white p-3 text-sm text-gray-700 focus:border-green-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                    />
+                  ) : (
+                    <div className="max-h-[300px] overflow-y-auto rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm leading-relaxed text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                      <p className="whitespace-pre-wrap">{lead.whatsappDraft.body}</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t dark:border-gray-700">
+                  <div className="flex gap-2">
+                    {!isEditingWhatsApp && (
+                     <button
+                       onClick={handleEditWhatsApp}
+                       className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+                     >
+                       Edit
+                     </button>
+                   )}
+                    <button
+                      onClick={handleGenerateWhatsApp}
+                      disabled={generatingWhatsApp}
+                      className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+                    >
+                      <FaSync className={generatingWhatsApp ? "animate-spin" : ""} />
+                      {generatingWhatsApp ? "Generating..." : "Regenerate"}
+                    </button>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setIsWhatsAppModalOpen(false)}
+                      className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+                    >
+                      Cancel
+                    </button>
+                    {isEditingWhatsApp ? (
+                      <button
+                        onClick={handleSaveWhatsAppDraft}
+                        className="flex items-center gap-2 rounded-lg bg-green-600 px-6 py-2 text-sm font-medium text-white hover:bg-green-700"
+                      >
+                        Save & Preview
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleSendWhatsApp}
+                        className="flex items-center gap-2 rounded-lg bg-green-600 px-6 py-2 text-sm font-medium text-white hover:bg-green-700"
+                      >
+                        <FaWhatsapp /> Send via WhatsApp
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </Modal>
+
         <div className="order-2 space-y-6 lg:order-1 lg:col-span-2">
           <div className="rounded-xl bg-white p-5 shadow dark:bg-white/[0.03]">
             <div className="mb-4 flex items-center justify-between">
@@ -421,55 +743,126 @@ const LeadDetail = () => {
                   <h4 className="flex items-center gap-2 font-semibold text-gray-800 dark:text-white">
                     <FaEnvelope className="text-blue-600" /> AI Email Draft
                   </h4>
-                  <button
-                    onClick={handleGenerateEmail}
-                    disabled={generatingEmail}
-                    className="text-sm text-blue-600 hover:underline dark:text-blue-400 disabled:opacity-50"
-                  >
-                    {generatingEmail
-                      ? "Generating..."
-                      : lead.emailDraft
-                      ? "Regenerate"
-                      : "Generate Draft"}
-                  </button>
+                  <div className="flex gap-3">
+                    {!isEditingEmail && lead.emailDraft && (
+                      <button
+                        onClick={handleEditEmail}
+                        className="text-sm text-gray-600 hover:underline dark:text-gray-400"
+                      >
+                        Edit Draft
+                      </button>
+                    )}
+                    <button
+                      onClick={handleGenerateEmail}
+                      disabled={generatingEmail || isEditingEmail}
+                      className="text-sm text-blue-600 hover:underline dark:text-blue-400 disabled:opacity-50"
+                    >
+                      {generatingEmail
+                        ? "Generating..."
+                        : lead.emailDraft
+                        ? "Regenerate"
+                        : "Generate Draft"}
+                    </button>
+                  </div>
                 </div>
 
                 {lead.emailDraft ? (
                   <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-600 dark:bg-gray-700">
-                    <div className="mb-2 flex items-start justify-between">
-                      <div>
-                        <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
-                          Subject
-                        </span>
-                        <p className="mb-2 font-medium text-gray-800 dark:text-white">
-                          {lead.emailDraft.subject}
-                        </p>
+                    {isEditingEmail ? (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-gray-500">
+                            Subject
+                          </label>
+                          <input
+                            type="text"
+                            value={editedEmailSubject}
+                            onChange={(e) =>
+                              setEditedEmailSubject(e.target.value)
+                            }
+                            className="w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-gray-500">
+                            Body
+                          </label>
+                          <textarea
+                            value={editedEmailBody}
+                            onChange={(e) =>
+                              setEditedEmailBody(e.target.value)
+                            }
+                            rows={10}
+                            className="w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                          />
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => setIsEditingEmail(false)}
+                            className="rounded px-3 py-1 text-sm font-medium text-gray-600 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-600"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={handleSaveEmailDraft}
+                            className="rounded bg-blue-600 px-3 py-1 text-sm font-medium text-white hover:bg-blue-700"
+                          >
+                            Save Draft
+                          </button>
+                        </div>
                       </div>
-                      <button
-                        onClick={() =>
-                          copyToClipboard(lead.emailDraft!.subject)
-                        }
-                        className="text-gray-400 hover:text-gray-600"
-                      >
-                        <FaCopy />
-                      </button>
-                    </div>
-                    <div className="relative">
-                      <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-gray-500">
-                        Body
-                      </span>
-                      <p className="text-sm text-gray-700 whitespace-pre-wrap dark:text-gray-300">
-                        {lead.emailDraft.body}
-                      </p>
-                      <button
-                        onClick={() =>
-                          copyToClipboard(lead.emailDraft!.body)
-                        }
-                        className="absolute right-0 top-0 text-gray-400 hover:text-gray-600"
-                      >
-                        <FaCopy />
-                      </button>
-                    </div>
+                    ) : (
+                      <>
+                        <div className="mb-2 flex items-start justify-between">
+                          <div>
+                            <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                              Subject
+                            </span>
+                            <p className="mb-2 font-medium text-gray-800 dark:text-white">
+                              {lead.emailDraft.subject}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() =>
+                              copyToClipboard(lead.emailDraft!.subject)
+                            }
+                            className="text-gray-400 hover:text-gray-600"
+                          >
+                            <FaCopy />
+                          </button>
+                        </div>
+                        <div className="relative">
+                          <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-gray-500">
+                            Body
+                          </span>
+                          <p className="text-sm text-gray-700 whitespace-pre-wrap dark:text-gray-300">
+                            {lead.emailDraft.body}
+                          </p>
+                          <button
+                            onClick={() =>
+                              copyToClipboard(lead.emailDraft!.body)
+                            }
+                            className="absolute right-0 top-0 text-gray-400 hover:text-gray-600"
+                          >
+                            <FaCopy />
+                          </button>
+                        </div>
+                        <div className="mt-4 flex justify-end">
+                          <button
+                            onClick={handleSendEmail}
+                            disabled={sendingEmail}
+                            className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors ${
+                              sendingEmail
+                                ? "cursor-not-allowed bg-blue-400"
+                                : "bg-blue-600 hover:bg-blue-700"
+                            }`}
+                          >
+                            <FaEnvelope className="h-4 w-4" />
+                            {sendingEmail ? "Sending..." : "Send Mail"}
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 ) : (
                   <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4 text-center dark:bg-gray-800">
@@ -485,32 +878,76 @@ const LeadDetail = () => {
                   <h4 className="flex items-center gap-2 font-semibold text-gray-800 dark:text-white">
                     <FaWhatsapp className="text-green-600" /> AI WhatsApp Draft
                   </h4>
-                  <button
-                    onClick={handleGenerateWhatsApp}
-                    disabled={generatingWhatsApp}
-                    className="text-sm text-green-600 hover:underline dark:text-green-400 disabled:opacity-50"
-                  >
-                    {generatingWhatsApp
-                      ? "Generating..."
-                      : lead.whatsappDraft
-                      ? "Regenerate"
-                      : "Generate Draft"}
-                  </button>
+                  <div className="flex gap-3">
+                    {!isEditingWhatsApp && lead.whatsappDraft && (
+                      <button
+                        onClick={handleEditWhatsApp}
+                        className="text-sm text-gray-600 hover:underline dark:text-gray-400"
+                      >
+                        Edit Draft
+                      </button>
+                    )}
+                    <button
+                      onClick={handleGenerateWhatsApp}
+                      disabled={generatingWhatsApp || isEditingWhatsApp}
+                      className="text-sm text-green-600 hover:underline dark:text-green-400 disabled:opacity-50"
+                    >
+                      {generatingWhatsApp
+                        ? "Generating..."
+                        : lead.whatsappDraft
+                        ? "Regenerate"
+                        : "Generate Draft"}
+                    </button>
+                  </div>
                 </div>
 
                 {lead.whatsappDraft ? (
                   <div className="relative rounded-lg border border-green-200 bg-green-50 p-4 dark:border-gray-600 dark:bg-gray-700">
-                    <p className="text-sm text-gray-800 whitespace-pre-wrap dark:text-white">
-                      {lead.whatsappDraft.body}
-                    </p>
-                    <button
-                      onClick={() =>
-                        copyToClipboard(lead.whatsappDraft!.body)
-                      }
-                      className="absolute right-4 top-4 text-gray-400 hover:text-gray-600"
-                    >
-                      <FaCopy />
-                    </button>
+                    {isEditingWhatsApp ? (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-gray-500">
+                            Message Body
+                          </label>
+                          <textarea
+                            value={editedWhatsAppBody}
+                            onChange={(e) =>
+                              setEditedWhatsAppBody(e.target.value)
+                            }
+                            rows={5}
+                            className="w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-green-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                          />
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => setIsEditingWhatsApp(false)}
+                            className="rounded px-3 py-1 text-sm font-medium text-gray-600 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-600"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={handleSaveWhatsAppDraft}
+                            className="rounded bg-green-600 px-3 py-1 text-sm font-medium text-white hover:bg-green-700"
+                          >
+                            Save Draft
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-sm text-gray-800 whitespace-pre-wrap dark:text-white">
+                          {lead.whatsappDraft.body}
+                        </p>
+                        <button
+                          onClick={() =>
+                            copyToClipboard(lead.whatsappDraft!.body)
+                          }
+                          className="absolute right-4 top-4 text-gray-400 hover:text-gray-600"
+                        >
+                          <FaCopy />
+                        </button>
+                      </>
+                    )}
                   </div>
                 ) : (
                   <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4 text-center dark:bg-gray-800">

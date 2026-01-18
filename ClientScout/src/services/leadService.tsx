@@ -61,6 +61,13 @@ export interface LeadFormData {
   status: "New" | "Contacted" | "FollowUp" | "Interested" | "Converted" | "Lost";
   notes?: string;
   nextFollowUp?: string;
+  emailDraft?: {
+    subject: string;
+    body: string;
+  };
+  whatsappDraft?: {
+    body: string;
+  };
 }
 
 export interface PaginatedLeads {
@@ -116,6 +123,11 @@ export const analyzeLead = async (id: string): Promise<Lead> => {
 
 export const generateEmailDraft = async (id: string): Promise<Lead> => {
   const res = await api.post(`/leads/${id}/generate-email`);
+  return res.data;
+};
+
+export const sendLeadEmail = async (id: string, subject: string, body: string): Promise<any> => {
+  const res = await api.post(`/leads/${id}/send-email`, { subject, body });
   return res.data;
 };
 

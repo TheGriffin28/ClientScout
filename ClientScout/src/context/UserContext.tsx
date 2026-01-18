@@ -25,6 +25,12 @@ interface User {
     postalCode?: string;
     taxId?: string;
   };
+  smtpSettings?: {
+    email?: string;
+    password?: string;
+    host?: string;
+    port?: number;
+  };
 }
 
 interface UserContextType {

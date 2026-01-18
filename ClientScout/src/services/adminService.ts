@@ -19,6 +19,31 @@ export interface AdminUser {
   lastAIUsedAt?: string;
 }
 
+export interface AIUsageResponse {
+  categories: string[];
+  series: {
+    name: string;
+    data: number[];
+  }[];
+  topUsers: any[];
+}
+
+export interface DashboardChartsResponse {
+  categories: string[];
+  userGrowth: {
+    name: string;
+    data: number[];
+  };
+  aiUsage: {
+    name: string;
+    data: number[];
+  };
+  leadDistribution: {
+    status: string;
+    count: number;
+  }[];
+}
+
 export const adminService = {
   getStats: async (): Promise<UserStats> => {
     const response = await api.get("/admin/stats");
@@ -38,8 +63,13 @@ export const adminService = {
     await api.patch(`/admin/users/${userId}/role`, { role });
   },
 
-  getAIUsageData: async (): Promise<any> => {
+  getAIUsageData: async (): Promise<AIUsageResponse> => {
     const response = await api.get("/admin/ai-usage");
+    return response.data;
+  },
+
+  getChartsData: async (): Promise<DashboardChartsResponse> => {
+    const response = await api.get("/admin/charts");
     return response.data;
   },
 

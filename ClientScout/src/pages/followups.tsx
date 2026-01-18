@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import { FaPhoneAlt } from "react-icons/fa";
 import { getFollowUps, updateLead, Lead } from "../services/leadService";
+import { TableSkeleton } from "../components/ui/Skeleton";
 
 interface FollowUpItem extends Lead {
   statusLabel: "Overdue" | "Today" | "Upcoming";
@@ -95,7 +96,9 @@ const FollowUps = () => {
         <h1 className="mb-6 text-2xl font-semibold text-gray-800 dark:text-white">
           Follow-ups
         </h1>
-        <div className="text-center py-8 text-gray-500 dark:text-gray-400">Loading follow-ups...</div>
+        <div className="rounded-xl bg-white p-6 shadow-md dark:bg-white/[0.03]">
+          <TableSkeleton rows={8} cols={4} />
+        </div>
       </div>
     );
   }

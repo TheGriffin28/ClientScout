@@ -5,9 +5,10 @@ import PageBreadcrumb from "../components/common/PageBreadCrumb";
 import PageMeta from "../components/common/PageMeta";
 import { useUser } from "../context/UserContext";
 import api from "../services/api";
+import { ProfileSkeleton } from "../components/ui/Skeleton";
 
 const Settings = () => {
-  const { user, refreshUser } = useUser();
+  const { user, loading, refreshUser } = useUser();
   const [activeTab, setActiveTab] = useState("profile");
   const location = useLocation();
 
@@ -18,6 +19,13 @@ const Settings = () => {
   const [bio, setBio] = useState("");
   const [locationState, setLocationState] = useState("");
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+
+  // SMTP State
+  const [smtpEmail, setSmtpEmail] = useState("");
+  const [smtpPassword, setSmtpPassword] = useState("");
+  const [smtpHost, setSmtpHost] = useState("smtp.gmail.com");
+  const [smtpPort, setSmtpPort] = useState(465);
+  const [isUpdatingSMTP, setIsUpdatingSMTP] = useState(false);
 
   // Password State
   const [currentPassword, setCurrentPassword] = useState("");
@@ -32,17 +40,42 @@ const Settings = () => {
       setMobileNumber(user.mobileNumber || "");
       setBio(user.bio || "");
       setLocationState(user.location || "");
+      setSmtpEmail(user.smtpSettings?.email || "");
+      setSmtpPassword(user.smtpSettings?.password || "");
+      setSmtpHost(user.smtpSettings?.host || "smtp.gmail.com");
+      setSmtpPort(user.smtpSettings?.port || 465);
     }
   }, [user]);
 
   useEffect(() => {
     if (location.hash) {
       const tab = location.hash.replace("#", "");
-      if (["profile", "account"].includes(tab)) {
+      if (["profile", "account", "smtp"].includes(tab)) {
         setActiveTab(tab);
       }
     }
   }, [location]);
+
+  const handleSMTPUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsUpdatingSMTP(true);
+    try {
+      await api.put("/auth/profile", { 
+        smtpSettings: {
+          email: smtpEmail,
+          password: smtpPassword,
+          host: smtpHost,
+          port: smtpPort
+        }
+      });
+      await refreshUser();
+      toast.success("SMTP settings updated successfully!");
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to update SMTP settings");
+    } finally {
+      setIsUpdatingSMTP(false);
+    }
+  };
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,28 +126,42 @@ const Settings = () => {
       <PageBreadcrumb pageTitle="Settings" />
 
       <div className="rounded-xl border border-stroke bg-white p-4 shadow-default dark:border-strokedark dark:bg-white/[0.03] md:p-6 xl:p-9">
-        <div className="mb-6 flex gap-4 border-b border-stroke dark:border-strokedark">
-          <button
-            className={`pb-2 text-sm font-medium transition-colors ${
-              activeTab === "profile"
-                ? "border-b-2 border-primary text-primary dark:border-white dark:text-white"
-                : "text-gray-500 hover:text-primary dark:text-gray-400 dark:hover:text-white"
-            }`}
-            onClick={() => setActiveTab("profile")}
-          >
-            Edit Profile
-          </button>
-          <button
-            className={`pb-2 text-sm font-medium transition-colors ${
-              activeTab === "account"
-                ? "border-b-2 border-primary text-primary dark:border-white dark:text-white"
-                : "text-gray-500 hover:text-primary dark:text-gray-400 dark:hover:text-white"
-            }`}
-            onClick={() => setActiveTab("account")}
-          >
-            Account Settings
-          </button>
-        </div>
+        {loading ? (
+          <ProfileSkeleton />
+        ) : (
+          <>
+            <div className="mb-6 flex gap-4 border-b border-stroke dark:border-strokedark">
+              <button
+                className={`pb-2 text-sm font-medium transition-colors ${
+                  activeTab === "profile"
+                    ? "border-b-2 border-primary text-primary dark:border-white dark:text-white"
+                    : "text-gray-500 hover:text-primary dark:text-gray-400 dark:hover:text-white"
+                }`}
+                onClick={() => setActiveTab("profile")}
+              >
+                Edit Profile
+              </button>
+              <button
+                className={`pb-2 text-sm font-medium transition-colors ${
+                  activeTab === "account"
+                    ? "border-b-2 border-primary text-primary dark:border-white dark:text-white"
+                    : "text-gray-500 hover:text-primary dark:text-gray-400 dark:hover:text-white"
+                }`}
+                onClick={() => setActiveTab("account")}
+              >
+                Account Settings
+              </button>
+              <button
+                className={`pb-2 text-sm font-medium transition-colors ${
+                  activeTab === "smtp"
+                    ? "border-b-2 border-primary text-primary dark:border-white dark:text-white"
+                    : "text-gray-500 hover:text-primary dark:text-gray-400 dark:hover:text-white"
+                }`}
+                onClick={() => setActiveTab("smtp")}
+              >
+                Email (SMTP)
+              </button>
+            </div>
 
         {activeTab === "profile" && (
           <form className="space-y-8" onSubmit={handleProfileUpdate}>
@@ -221,6 +268,92 @@ const Settings = () => {
           </form>
         )}
 
+        {activeTab === "smtp" && (
+          <form className="space-y-8" onSubmit={handleSMTPUpdate}>
+            <div>
+              <h2 className="mb-4 text-lg font-semibold text-gray-800 dark:text-white">
+                SMTP Configuration
+              </h2>
+              <p className="mb-6 text-sm text-gray-500 dark:text-gray-400">
+                Configure your own email server to send emails directly to leads. 
+                For Gmail, use an <strong>App Password</strong>.
+              </p>
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                {/* SMTP Email */}
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-600 dark:text-gray-300">
+                    SMTP Email
+                  </label>
+                  <input
+                    type="email"
+                    placeholder="your-email@gmail.com"
+                    value={smtpEmail}
+                    onChange={(e) => setSmtpEmail(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none dark:border-strokedark dark:bg-boxdark dark:text-white"
+                    required
+                  />
+                </div>
+
+                {/* SMTP Password */}
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-600 dark:text-gray-300">
+                    SMTP Password / App Password
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="xxxx xxxx xxxx xxxx"
+                    value={smtpPassword}
+                    onChange={(e) => setSmtpPassword(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none dark:border-strokedark dark:bg-boxdark dark:text-white"
+                    required
+                  />
+                </div>
+
+                {/* SMTP Host */}
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-600 dark:text-gray-300">
+                    SMTP Host
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="smtp.gmail.com"
+                    value={smtpHost}
+                    onChange={(e) => setSmtpHost(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none dark:border-strokedark dark:bg-boxdark dark:text-white"
+                    required
+                  />
+                </div>
+
+                {/* SMTP Port */}
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-600 dark:text-gray-300">
+                    SMTP Port
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="465"
+                    value={smtpPort}
+                    onChange={(e) => setSmtpPort(Number(e.target.value))}
+                    className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none dark:border-strokedark dark:bg-boxdark dark:text-white"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4">
+              <button
+                type="submit"
+                disabled={isUpdatingSMTP}
+                className="rounded-lg bg-blue-600 px-6 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {isUpdatingSMTP ? "Saving..." : "Save SMTP Settings"}
+              </button>
+            </div>
+          </form>
+        )}
+
         {activeTab === "account" && (
           <div className="space-y-8">
             <form onSubmit={handlePasswordUpdate}>
@@ -303,6 +436,8 @@ const Settings = () => {
               </div>
             </div>
           </div>
+        )}
+          </>
         )}
       </div>
     </>

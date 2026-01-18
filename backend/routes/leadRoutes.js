@@ -10,6 +10,7 @@ import {
   getFollowUps,
   analyzeLead,
   generateEmail,
+  sendLeadEmail,
   generateWhatsApp,
   logContact
 } from "../controllers/leadController.js";
@@ -28,6 +29,7 @@ router.get("/followups", protect, getFollowUps);
 router.put("/:id/status", protect, updateLeadStatus);
 router.post("/:id/analyze", protect, analyzeLead);
 router.post("/:id/generate-email", protect, generateEmail);
+router.post("/:id/send-email", protect, sendLeadEmail);
 router.post("/:id/generate-whatsapp", protect, generateWhatsApp);
 router.post("/:id/log-contact", protect, logContact);
 

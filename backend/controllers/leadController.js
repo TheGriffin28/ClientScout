@@ -3,6 +3,7 @@ import User from "../models/User.js";
 import Config from "../models/Config.js";
 import mongoose from "mongoose";
 import { analyzeWebsite } from "../services/aiService.js";
+import { sendEmail } from "../services/emailService.js";
 import { logAdminAction } from "../utils/logger.js";
 
 /* CREATE LEAD */
@@ -260,6 +261,13 @@ export const analyzeLead = async (req, res) => {
       lastAIUsedAt: new Date()
     });
 
+    // Log successful AI Action
+    await logAdminAction({
+      action: "AI_ACTION",
+      userId: req.user._id,
+      details: { leadId: req.params.id, businessName: lead.businessName }
+    });
+
     res.json(updatedLead);
   } catch (error) {
     console.error("Analysis failed:", error);
@@ -361,6 +369,72 @@ export const generateEmail = async (req, res) => {
     });
 
     res.status(500).json({ message: "Failed to generate email", error: error.message });
+  }
+};
+
+/* SEND EMAIL VIA RESEND */
+export const sendLeadEmail = async (req, res) => {
+  const { id } = req.params;
+  const { subject, body } = req.body;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ message: "Invalid lead ID format" });
+  }
+
+  const lead = await Lead.findById(id);
+
+  if (!lead || lead.user.toString() !== req.user._id.toString()) {
+    return res.status(404).json({ message: "Lead not found" });
+  }
+
+  if (!lead.email) {
+    return res.status(400).json({ message: "Lead has no email address" });
+  }
+
+  // Fetch user to get SMTP settings
+  const user = await User.findById(req.user._id);
+  if (!user.smtpSettings || !user.smtpSettings.email || !user.smtpSettings.password) {
+    return res.status(400).json({ 
+      message: "Please configure your SMTP settings in Profile Settings before sending emails." 
+    });
+  }
+
+  try {
+    // Convert plain text body to simple HTML (replace newlines with <br/>)
+    const htmlBody = body.replace(/\n/g, "<br/>");
+
+    await sendEmail({
+      to: lead.email,
+      subject: subject || "Re: Inquiry",
+      html: `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+          ${htmlBody}
+        </div>
+      `,
+      from: `"${user.name}" <${user.smtpSettings.email}>`,
+      smtp: {
+        user: user.smtpSettings.email,
+        pass: user.smtpSettings.password,
+        host: user.smtpSettings.host,
+        port: user.smtpSettings.port,
+      },
+    });
+
+    // Log the contact automatically after sending email
+    lead.lastContactedAt = new Date();
+    lead.status = "Contacted";
+    
+    // Suggest follow up in 3 days
+    const nextDate = new Date();
+    nextDate.setDate(nextDate.getDate() + 3);
+    lead.nextFollowUp = nextDate;
+
+    await lead.save();
+
+    res.json({ message: "Email sent successfully", lead });
+  } catch (error) {
+    console.error("Failed to send email:", error);
+    res.status(500).json({ message: "Failed to send email", error: error.message });
   }
 };
 

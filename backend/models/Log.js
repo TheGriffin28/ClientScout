@@ -11,6 +11,7 @@ const logSchema = new mongoose.Schema(
         "USER_ENABLED",
         "ROLE_CHANGE",
         "AI_ERROR",
+        "AI_ACTION",
         "ADMIN_LOGIN",
         "CONFIG_CHANGE"
       ]

@@ -3,15 +3,12 @@ import ReactApexChart from 'react-apexcharts';
 import { ApexOptions } from 'apexcharts';
 import { useTheme } from '../../context/ThemeContext';
 
-interface UsageChartProps {
+interface UserGrowthChartProps {
   categories: string[];
-  series: {
-    name: string;
-    data: number[];
-  }[];
+  data: number[];
 }
 
-const UsageChart: React.FC<UsageChartProps> = ({ categories, series }) => {
+const UserGrowthChart: React.FC<UserGrowthChartProps> = ({ categories, data }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
@@ -25,7 +22,7 @@ const UsageChart: React.FC<UsageChartProps> = ({ categories, series }) => {
         colors: isDark ? '#E5E7EB' : '#4B5563',
       },
     },
-    colors: ['#3C50E0', '#10B981'],
+    colors: ['#10B981'],
     chart: {
       fontFamily: 'Outfit, sans-serif',
       height: 350,
@@ -40,7 +37,7 @@ const UsageChart: React.FC<UsageChartProps> = ({ categories, series }) => {
     },
     stroke: {
       curve: 'smooth',
-      width: [2, 2],
+      width: 2,
     },
     fill: {
       type: 'gradient',
@@ -88,34 +85,44 @@ const UsageChart: React.FC<UsageChartProps> = ({ categories, series }) => {
           colors: isDark ? '#9CA3AF' : '#6B7280',
         },
       },
-      title: {
-        style: {
-          fontSize: '0px',
-        },
-      },
     },
     tooltip: {
       theme: isDark ? 'dark' : 'light',
     },
   };
 
+  const series = [
+    {
+      name: 'New Users',
+      data: data,
+    },
+  ];
+
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] md:p-6">
-      <div className="mb-4">
-        <h5 className="text-xl font-semibold text-gray-800 dark:text-white">
-          Platform Usage (AI Actions)
-        </h5>
+    <div className="rounded-2xl border border-gray-200 bg-white px-5 pt-7.5 pb-5 shadow-default dark:border-gray-800 dark:bg-white/[0.03] sm:px-7.5">
+      <div className="mb-4 justify-between gap-4 sm:flex">
+        <div>
+          <h4 className="text-xl font-bold text-gray-800 dark:text-white/90">
+            User Growth
+          </h4>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            New user registrations in the last 7 days
+          </p>
+        </div>
       </div>
+
       <div>
-        <ReactApexChart
-          options={options}
-          series={series}
-          type="area"
-          height={350}
-        />
+        <div id="userGrowthChart" className="-ml-5">
+          <ReactApexChart
+            options={options}
+            series={series}
+            type="area"
+            height={350}
+          />
+        </div>
       </div>
     </div>
   );
 };
 
-export default UsageChart;
+export default UserGrowthChart;

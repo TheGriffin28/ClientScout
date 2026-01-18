@@ -6,6 +6,7 @@ import LeadStatusChart from "../../components/dashboard/charts/LeadStatusChart";
 import FollowUpChart from "../../components/dashboard/charts/FollowUpChart";
 import ActivityChart from "../../components/dashboard/charts/ActivityChart";
 import { FiUsers, FiPhoneCall, FiCheckCircle, FiClock, FiTrendingUp, FiCalendar } from "react-icons/fi";
+import { CardSkeleton, ChartSkeleton } from "../../components/ui/Skeleton";
 
 export default function Home() {
   const [loading, setLoading] = useState(true);
@@ -134,16 +135,6 @@ export default function Home() {
     });
   };
 
-  if (loading) {
-    return (
-      <PrivateRoute>
-        <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-boxdark-2">
-          <div className="h-16 w-16 animate-spin rounded-full border-4 border-solid border-primary border-t-transparent"></div>
-        </div>
-      </PrivateRoute>
-    );
-  }
-
   const currentDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
   return (
@@ -167,62 +158,92 @@ export default function Home() {
 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5 mb-8">
-          <CardDataStats 
-            title="New Leads" 
-            total={statusData.New.toString()} 
-            type="new"
-            trend="+12%"
-            trendUp={true}
-          />
-          <CardDataStats 
-            title="Contacted" 
-            total={statusData.Contacted.toString()} 
-            type="contacted" 
-            trend="+5%"
-            trendUp={true}
-          />
-          <CardDataStats 
-            title="Converted" 
-            total={statusData.Converted.toString()} 
-            type="converted" 
-            trend="+2.5%"
-            trendUp={true}
-          />
-          <CardDataStats 
-            title="Follow-ups Today" 
-            total={followUpData.Today.toString()} 
-            type="followup" 
-            trend="Due today"
-            trendUp={false}
-          />
-          <CardDataStats 
-            title="Leads Analyzed" 
-            total={leadsAnalyzed.toString()} 
-            type="analyzed"
-            trend="AI Insights"
-            trendUp={true}
-          />
-          <CardDataStats 
-            title="Avg Lead Score" 
-            total={avgLeadScore.toString()} 
-            type="score"
-            trend="Out of 5"
-            trendUp={true}
-          />
-          <CardDataStats 
-            title="Contacted Leads" 
-            total={statusData.Contacted.toString()} 
-            type="contacted_count"
-            trend="Total outreach"
-            trendUp={true}
-          />
+          {loading ? (
+            <>
+              <CardSkeleton />
+              <CardSkeleton />
+              <CardSkeleton />
+              <CardSkeleton />
+              <CardSkeleton />
+              <CardSkeleton />
+              <CardSkeleton />
+            </>
+          ) : (
+            <>
+              <CardDataStats 
+                title="New Leads" 
+                total={statusData.New.toString()} 
+                type="new"
+                trend="+12%"
+                trendUp={true}
+              />
+              <CardDataStats 
+                title="Contacted" 
+                total={statusData.Contacted.toString()} 
+                type="contacted" 
+                trend="+5%"
+                trendUp={true}
+              />
+              <CardDataStats 
+                title="Converted" 
+                total={statusData.Converted.toString()} 
+                type="converted" 
+                trend="+2.5%"
+                trendUp={true}
+              />
+              <CardDataStats 
+                title="Follow-ups Today" 
+                total={followUpData.Today.toString()} 
+                type="followup" 
+                trend="Due today"
+                trendUp={false}
+              />
+              <CardDataStats 
+                title="Leads Analyzed" 
+                total={leadsAnalyzed.toString()} 
+                type="analyzed"
+                trend="AI Insights"
+                trendUp={true}
+              />
+              <CardDataStats 
+                title="Avg Lead Score" 
+                total={avgLeadScore.toString()} 
+                type="score"
+                trend="Out of 5"
+                trendUp={true}
+              />
+              <CardDataStats 
+                title="Contacted Leads" 
+                total={statusData.Contacted.toString()} 
+                type="contacted_count"
+                trend="Total outreach"
+                trendUp={true}
+              />
+            </>
+          )}
         </div>
 
         {/* Charts Grid */}
         <div className="grid grid-cols-12 gap-4 md:gap-6 2xl:gap-7.5">
-          <LeadStatusChart data={statusData} />
-          <FollowUpChart data={followUpData} />
-          <ActivityChart categories={activityData.categories} series={activityData.series} />
+          {loading ? (
+            <>
+              <div className="col-span-12 xl:col-span-4">
+                <ChartSkeleton />
+              </div>
+              <div className="col-span-12 xl:col-span-4">
+                <ChartSkeleton />
+              </div>
+              <div className="col-span-12 xl:col-span-4">
+                <ChartSkeleton />
+              </div>
+            </>
+          ) : (
+            <>
+              <LeadStatusChart data={statusData} />
+              <FollowUpChart data={followUpData} />
+              <ActivityChart categories={activityData.categories} series={activityData.series} />
+            </>
+          )}
         </div>
       </div>
     </PrivateRoute>

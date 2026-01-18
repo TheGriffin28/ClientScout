@@ -6,6 +6,7 @@ import { adminService } from "../../services/adminService";
 import { toast } from "react-hot-toast";
 import ComponentCard from "../../components/common/ComponentCard";
 import Badge from "../../components/ui/badge/Badge";
+import { TableSkeleton } from "../../components/ui/Skeleton";
 
 interface LogEntry {
   _id: string;
@@ -71,14 +72,6 @@ const AdminLogs: React.FC = () => {
     }
   };
 
-  if (loading && page === 1) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-500"></div>
-      </div>
-    );
-  }
-
   return (
     <>
       <PageMeta
@@ -89,52 +82,60 @@ const AdminLogs: React.FC = () => {
 
       <ComponentCard title="System Activity">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-800">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Target User</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Admin</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-900 dark:divide-gray-700">
-              {filteredLogs.map((log) => (
-                <tr key={log._id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                    {new Date(log.timestamp).toLocaleString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <Badge color={getActionBadgeColor(log.action)}>
-                      {log.action}
-                    </Badge>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {log.userId ? (
-                      <div className="text-sm">
-                        <div className="font-medium text-gray-900 dark:text-white">{log.userId.name}</div>
-                        <div className="text-gray-500">{log.userId.email}</div>
-                      </div>
-                    ) : "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {log.adminId ? (
-                      <div className="text-sm">
-                        <div className="font-medium text-gray-900 dark:text-white">{log.adminId.name}</div>
-                        <div className="text-gray-500">{log.adminId.email}</div>
-                      </div>
-                    ) : "-"}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                    <pre className="text-xs overflow-hidden text-ellipsis max-w-xs">
-                      {JSON.stringify(log.details, null, 2)}
-                    </pre>
-                  </td>
+          {loading && page === 1 ? (
+            <TableSkeleton rows={10} cols={5} />
+          ) : (
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-800">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Target User</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Admin</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-900 dark:divide-gray-700">
+                {filteredLogs.map((log) => (
+                  <tr key={log._id}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      {new Date(log.timestamp).toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <Badge color={getActionBadgeColor(log.action)}>
+                        {log.action}
+                      </Badge>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {log.userId ? (
+                        <div className="text-sm">
+                          <div className="font-medium text-gray-900 dark:text-white">{log.userId.name}</div>
+                          <div className="text-gray-500 dark:text-gray-400">{log.userId.email}</div>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">N/A</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {log.adminId ? (
+                        <div className="text-sm">
+                          <div className="font-medium text-gray-900 dark:text-white">{log.adminId.name}</div>
+                          <div className="text-gray-500 dark:text-gray-400">{log.adminId.email}</div>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">System</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                      <div className="max-w-xs overflow-hidden text-ellipsis">
+                        {typeof log.details === "string" ? log.details : JSON.stringify(log.details)}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
 
         {/* Pagination */}
