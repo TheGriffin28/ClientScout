@@ -24,7 +24,7 @@ const Settings = () => {
   const [smtpEmail, setSmtpEmail] = useState("");
   const [smtpPassword, setSmtpPassword] = useState("");
   const [smtpHost, setSmtpHost] = useState("smtp.gmail.com");
-  const [smtpPort, setSmtpPort] = useState(465);
+  const [smtpPort, setSmtpPort] = useState(587);
   const [isUpdatingSMTP, setIsUpdatingSMTP] = useState(false);
 
   // Password State
@@ -43,7 +43,7 @@ const Settings = () => {
       setSmtpEmail(user.smtpSettings?.email || "");
       setSmtpPassword(user.smtpSettings?.password || "");
       setSmtpHost(user.smtpSettings?.host || "smtp.gmail.com");
-      setSmtpPort(user.smtpSettings?.port || 465);
+      setSmtpPort(user.smtpSettings?.port || 587);
     }
   }, [user]);
 
@@ -332,7 +332,7 @@ const Settings = () => {
                   </label>
                   <input
                     type="number"
-                    placeholder="465"
+                    placeholder="587"
                     value={smtpPort}
                     onChange={(e) => setSmtpPort(Number(e.target.value))}
                     className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none dark:border-strokedark dark:bg-boxdark dark:text-white"

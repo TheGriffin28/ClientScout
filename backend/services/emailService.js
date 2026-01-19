@@ -22,68 +22,71 @@ export const sendEmail = async ({ to, subject, html, from, smtp }) => {
     let transporterConfig;
 
     if (smtp && smtp.user && smtp.pass) {
-      const isGmail = (smtp.host || "").toLowerCase().includes("gmail");
+      // Use explicit host and port instead of 'service' to avoid cloud networking issues
+      const host = smtp.host || 'smtp.gmail.com';
+      const port = parseInt(smtp.port) || 587; // Default to 587 for better cloud compatibility
       
-      if (isGmail) {
-        // Use service: 'gmail' for Gmail-specific optimizations
-        transporterConfig = {
-          service: 'gmail',
-          auth: {
-            user: smtp.user,
-            pass: smtp.pass,
-          },
-        };
-      } else {
-        transporterConfig = {
-          host: smtp.host,
-          port: parseInt(smtp.port) || 465,
-          secure: parseInt(smtp.port) === 465,
-          auth: {
-            user: smtp.user,
-            pass: smtp.pass,
-          },
-          tls: {
-            rejectUnauthorized: false
-          }
-        };
-      }
+      transporterConfig = {
+        host: host,
+        port: port,
+        secure: port === 465, // true for 465, false for other ports
+        auth: {
+          user: smtp.user,
+          pass: smtp.pass,
+        },
+        tls: {
+          // Do not fail on invalid certs and ensure STARTTLS is used if on 587
+          rejectUnauthorized: false,
+          minVersion: 'TLSv1.2'
+        }
+      };
       
-      // Add common cloud-friendly settings
+      // Cloud-optimized connection settings
       Object.assign(transporterConfig, {
-        connectionTimeout: 20000, // Increase to 20s for Render
-        greetingTimeout: 20000,
-        socketTimeout: 25000,
-        dnsTimeout: 10000,
-        // Force IPv4 as many cloud providers have issues with IPv6 and SMTP
-        family: 4, 
+        connectionTimeout: 30000, // 30 seconds
+        greetingTimeout: 30000,
+        socketTimeout: 45000,
+        dnsTimeout: 15000,
+        family: 4, // Force IPv4
+        logger: true, // Log to console
+        debug: true   // Include SMTP traffic in logs
       });
     } else {
+      // Default system email (fallback)
       transporterConfig = {
-        service: 'gmail',
+        host: 'smtp.gmail.com',
+        port: 587,
+        secure: false,
         auth: {
           user: process.env.EMAIL_USER,
           pass: process.env.EMAIL_PASS,
         },
-        connectionTimeout: 20000,
-        greetingTimeout: 20000,
-        socketTimeout: 25000,
+        tls: {
+          rejectUnauthorized: false
+        },
+        connectionTimeout: 30000,
         family: 4,
+        logger: true,
+        debug: true
       };
     }
 
+    console.log(`Attempting SMTP connection to ${transporterConfig.host}:${transporterConfig.port}...`);
     const transporter = nodemailer.createTransport(transporterConfig);
 
     // Verify connection configuration
     try {
       await transporter.verify();
+      console.log('SMTP connection verified successfully!');
     } catch (verifyError) {
-      console.error('SMTP Verification Error details:', {
+      console.error('SMTP Verification Detailed Error:', {
+        message: verifyError.message,
         code: verifyError.code,
         command: verifyError.command,
-        response: verifyError.response,
-        host: transporterConfig.host || transporterConfig.service
+        host: transporterConfig.host,
+        port: transporterConfig.port
       });
-      throw new Error(`SMTP connection failed: ${verifyError.message}`);
+      throw new Error(`SMTP connection failed: ${verifyError.message}. Try switching port to 587 if you are using 465.`);
     }
 
     const mailOptions = {

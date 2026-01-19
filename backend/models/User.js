@@ -29,7 +29,7 @@ const userSchema = new mongoose.Schema(
       email: { type: String, default: "" },
       password: { type: String, default: "" }, // This should be an App Password
       host: { type: String, default: "smtp.gmail.com" },
-      port: { type: Number, default: 465 },
+      port: { type: Number, default: 587 },
     },
     resetPasswordToken: String,
     resetPasswordExpires: Date
