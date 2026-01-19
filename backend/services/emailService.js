@@ -19,9 +19,23 @@ dotenv.config();
  */
 export const sendEmail = async ({ to, subject, html, from, smtp }) => {
   try {
-    const transporterConfig = smtp && smtp.user && smtp.pass 
-      ? {
-          host: smtp.host || 'smtp.gmail.com',
+    let transporterConfig;
+
+    if (smtp && smtp.user && smtp.pass) {
+      const isGmail = (smtp.host || "").toLowerCase().includes("gmail");
+      
+      if (isGmail) {
+        // Use service: 'gmail' for Gmail-specific optimizations
+        transporterConfig = {
+          service: 'gmail',
+          auth: {
+            user: smtp.user,
+            pass: smtp.pass,
+          },
+        };
+      } else {
+        transporterConfig = {
+          host: smtp.host,
           port: parseInt(smtp.port) || 465,
           secure: parseInt(smtp.port) === 465,
           auth: {
@@ -29,23 +43,33 @@ export const sendEmail = async ({ to, subject, html, from, smtp }) => {
             pass: smtp.pass,
           },
           tls: {
-            // Do not fail on invalid certs
             rejectUnauthorized: false
-          },
-          connectionTimeout: 10000, // 10 seconds
-          greetingTimeout: 10000,
-          socketTimeout: 10000,
-        }
-      : {
-          service: 'gmail',
-          auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS,
-          },
-          connectionTimeout: 10000,
-          greetingTimeout: 10000,
-          socketTimeout: 10000,
+          }
         };
+      }
+      
+      // Add common cloud-friendly settings
+      Object.assign(transporterConfig, {
+        connectionTimeout: 20000, // Increase to 20s for Render
+        greetingTimeout: 20000,
+        socketTimeout: 25000,
+        dnsTimeout: 10000,
+        // Force IPv4 as many cloud providers have issues with IPv6 and SMTP
+        family: 4, 
+      });
+    } else {
+      transporterConfig = {
+        service: 'gmail',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
+        },
+        connectionTimeout: 20000,
+        greetingTimeout: 20000,
+        socketTimeout: 25000,
+        family: 4,
+      };
+    }
 
     const transporter = nodemailer.createTransport(transporterConfig);
 
@@ -53,7 +77,12 @@ export const sendEmail = async ({ to, subject, html, from, smtp }) => {
     try {
       await transporter.verify();
     } catch (verifyError) {
-      console.error('SMTP Verification Error:', verifyError);
+      console.error('SMTP Verification Error details:', {
+        code: verifyError.code,
+        command: verifyError.command,
+        response: verifyError.response,
+        host: transporterConfig.host || transporterConfig.service
+      });
       throw new Error(`SMTP connection failed: ${verifyError.message}`);
     }
 
@@ -68,6 +97,6 @@ export const sendEmail = async ({ to, subject, html, from, smtp }) => {
     return info;
   } catch (error) {
     console.error('SMTP email error:', error);
-    throw error; // Throw the original error to get more detail in the controller
+    throw error;
   }
 };
