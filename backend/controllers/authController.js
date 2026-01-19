@@ -1,8 +1,8 @@
-import User from "../models/User.js";
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
+import { sendEmail } from "../services/emailService.js";
 import crypto from "crypto";
-import nodemailer from "nodemailer";
+import bcrypt from "bcryptjs";
+import User from "../models/User.js";
+import jwt from "jsonwebtoken";
 import { logAdminAction } from "../utils/logger.js";
 
 const generateToken = (id) => {
@@ -232,19 +232,10 @@ export const forgotPassword = async (req, res) => {
 
     await user.save();
 
-    // Send email using nodemailer
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
+    // Send email using our email service
+    const resetUrl = `https://${req.get('host') === 'localhost:5000' ? 'localhost:5173' : req.get('host')}/reset-password/${resetToken}`;
 
-    const resetUrl = `http://localhost:5173/reset-password/${resetToken}`;
-
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
+    await sendEmail({
       to: user.email,
       subject: "Password Reset Request",
       html: `
@@ -260,9 +251,7 @@ export const forgotPassword = async (req, res) => {
           <p style="font-size: 12px; color: #888; text-align: center;">ClientScout Team</p>
         </div>
       `,
-    };
-
-    await transporter.sendMail(mailOptions);
+    });
 
     res.status(200).json({ 
       message: "Password reset link sent to your email",

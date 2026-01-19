@@ -401,7 +401,7 @@ export const sendLeadEmail = async (req, res) => {
 
   try {
     // Convert plain text body to simple HTML (replace newlines with <br/>)
-    const htmlBody = body.replace(/\n/g, "<br/>");
+    const htmlBody = (body || "").replace(/\n/g, "<br/>");
 
     await sendEmail({
       to: lead.email,
@@ -434,7 +434,17 @@ export const sendLeadEmail = async (req, res) => {
     res.json({ message: "Email sent successfully", lead });
   } catch (error) {
     console.error("Failed to send email:", error);
-    res.status(500).json({ message: "Failed to send email", error: error.message });
+    
+    let errorMessage = "Failed to send email";
+    if (error.message.includes("SMTP connection failed")) {
+      errorMessage = "SMTP Connection Error: Please check your SMTP settings (Host, Port, and App Password).";
+    } else if (error.message.includes("Invalid login") || error.message.includes("auth")) {
+      errorMessage = "SMTP Authentication Failed: Please verify your email and App Password.";
+    } else {
+      errorMessage = `Failed to send email: ${error.message}`;
+    }
+
+    res.status(500).json({ message: errorMessage, error: error.message });
   }
 };
 

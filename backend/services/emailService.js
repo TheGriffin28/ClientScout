@@ -22,12 +22,19 @@ export const sendEmail = async ({ to, subject, html, from, smtp }) => {
     const transporterConfig = smtp && smtp.user && smtp.pass 
       ? {
           host: smtp.host || 'smtp.gmail.com',
-          port: smtp.port || 465,
-          secure: (smtp.port || 465) === 465,
+          port: parseInt(smtp.port) || 465,
+          secure: parseInt(smtp.port) === 465,
           auth: {
             user: smtp.user,
             pass: smtp.pass,
           },
+          tls: {
+            // Do not fail on invalid certs
+            rejectUnauthorized: false
+          },
+          connectionTimeout: 10000, // 10 seconds
+          greetingTimeout: 10000,
+          socketTimeout: 10000,
         }
       : {
           service: 'gmail',
@@ -35,9 +42,20 @@ export const sendEmail = async ({ to, subject, html, from, smtp }) => {
             user: process.env.EMAIL_USER,
             pass: process.env.EMAIL_PASS,
           },
+          connectionTimeout: 10000,
+          greetingTimeout: 10000,
+          socketTimeout: 10000,
         };
 
     const transporter = nodemailer.createTransport(transporterConfig);
+
+    // Verify connection configuration
+    try {
+      await transporter.verify();
+    } catch (verifyError) {
+      console.error('SMTP Verification Error:', verifyError);
+      throw new Error(`SMTP connection failed: ${verifyError.message}`);
+    }
 
     const mailOptions = {
       from: from || (smtp && smtp.user) || process.env.EMAIL_USER,
@@ -50,6 +68,6 @@ export const sendEmail = async ({ to, subject, html, from, smtp }) => {
     return info;
   } catch (error) {
     console.error('SMTP email error:', error);
-    throw new Error('Failed to send email via SMTP');
+    throw error; // Throw the original error to get more detail in the controller
   }
 };

@@ -99,7 +99,11 @@ const LeadDetail = () => {
     
     try {
       setSendingEmail(true);
-      await sendLeadEmail(id, lead.emailDraft.subject, lead.emailDraft.body);
+      // Use edited values if available, otherwise use original draft values
+      const subjectToSend = isEditingEmail ? editedEmailSubject : lead.emailDraft.subject;
+      const bodyToSend = isEditingEmail ? editedEmailBody : lead.emailDraft.body;
+      
+      await sendLeadEmail(id, subjectToSend, bodyToSend);
       toast.success("Email sent successfully!");
       setIsEmailModalOpen(false);
       // Refresh lead to update contact history
