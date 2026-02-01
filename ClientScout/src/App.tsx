@@ -3,6 +3,8 @@ import SignIn from "./pages/AuthPages/SignIn";
 import SignUp from "./pages/AuthPages/SignUp";
 import ForgotPassword from "./pages/AuthPages/ForgotPassword";
 import ResetPassword from "./pages/AuthPages/ResetPassword";
+import VerifyEmailOTP from "./pages/AuthPages/VerifyEmailOTP";
+import VerifyTwoFactor from "./pages/AuthPages/VerifyTwoFactor";
 import NotFound from "./pages/OtherPage/NotFound";
 import UserProfiles from "./pages/UserProfiles";
 
@@ -33,6 +35,8 @@ export default function App() {
         <Route path="/signup" element={<SignUp />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
+        <Route path="/verify-email" element={<VerifyEmailOTP />} />
+        <Route path="/verify-2fa" element={<VerifyTwoFactor />} />
 
         {/* Dashboard Layout */}
         <Route element={<AppLayout />}>

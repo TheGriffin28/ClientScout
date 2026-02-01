@@ -4,6 +4,7 @@ import {
   getAllUsers,
   updateUserStatus,
   updateUserRole,
+  updateUserLimits,
   getAIUsageStats,
   getConfigs,
   updateConfig,
@@ -22,6 +23,7 @@ router.get("/stats", getAdminStats);
 router.get("/users", getAllUsers);
 router.patch("/users/:id/status", updateUserStatus);
 router.patch("/users/:id/role", updateUserRole);
+router.patch("/users/:id/limits", updateUserLimits);
 router.get("/ai-usage", getAIUsageStats);
 router.get("/charts", getDashboardCharts);
 router.get("/config", getConfigs);

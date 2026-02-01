@@ -39,23 +39,22 @@ export default function SignUpForm() {
 
     try {
       const fullName = `${firstName} ${lastName}`.trim();
-      
       const response = await api.post("/auth/register", {
         name: fullName,
         email,
         mobileNumber,
         password,
       });
-      
-      // Store token
-      localStorage.setItem("token", response.data.token);
-      
-      // Update user context
-      setUser(response.data);
-      
-      // Redirect to dashboard
-      navigate("/");
-      
+
+      const { userId, email: registeredEmail } = response.data;
+      if (userId && registeredEmail) {
+        const pendingVerification = { userId, email: registeredEmail };
+        localStorage.setItem("pendingVerification", JSON.stringify(pendingVerification));
+        navigate("/verify-email", { state: pendingVerification });
+      } else {
+        setUser(null);
+        navigate("/signin");
+      }
     } catch (err) {
       if (axios.isAxiosError(err) && err.response) {
         setError(err.response.data?.message || "Registration failed");

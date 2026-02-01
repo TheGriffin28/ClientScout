@@ -17,6 +17,8 @@ export interface AdminUser {
   aiUsageCount: number;
   lastLoginAt?: string;
   lastAIUsedAt?: string;
+  maxDailyEmailsPerUser?: number;
+  maxDailyAICallsPerUser?: number;
 }
 
 export interface AIUsageResponse {
@@ -61,6 +63,10 @@ export const adminService = {
 
   updateUserRole: async (userId: string, role: "admin" | "user"): Promise<void> => {
     await api.patch(`/admin/users/${userId}/role`, { role });
+  },
+
+  updateUserLimits: async (userId: string, limits: { maxDailyEmailsPerUser?: number; maxDailyAICallsPerUser?: number }): Promise<void> => {
+    await api.patch(`/admin/users/${userId}/limits`, limits);
   },
 
   getAIUsageData: async (): Promise<AIUsageResponse> => {

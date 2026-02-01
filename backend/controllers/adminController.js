@@ -117,7 +117,9 @@ export const getAllUsers = async (req, res) => {
       createdAt: user.createdAt,
       aiUsageCount: user.aiUsageCount || 0,
       lastLoginAt: user.lastLoginAt,
-      lastAIUsedAt: user.lastAIUsedAt
+      lastAIUsedAt: user.lastAIUsedAt,
+      maxDailyEmailsPerUser: user.maxDailyEmailsPerUser,
+      maxDailyAICallsPerUser: user.maxDailyAICallsPerUser
     }));
 
     res.json(formattedUsers);
@@ -176,6 +178,43 @@ export const updateUserRole = async (req, res) => {
 
     res.json({ message: `User ${user.name} role updated to ${role}` });
   } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const updateUserLimits = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { maxDailyEmailsPerUser, maxDailyAICallsPerUser } = req.body;
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (maxDailyEmailsPerUser !== undefined) {
+      user.maxDailyEmailsPerUser = maxDailyEmailsPerUser;
+    }
+    if (maxDailyAICallsPerUser !== undefined) {
+      user.maxDailyAICallsPerUser = maxDailyAICallsPerUser;
+    }
+    await user.save();
+
+    // Log user limits change
+    await logAdminAction({
+      action: "USER_LIMITS_UPDATE",
+      userId: user._id,
+      adminId: req.user._id,
+      details: { 
+        email: user.email, 
+        maxDailyEmailsPerUser, 
+        maxDailyAICallsPerUser 
+      }
+    });
+
+    res.json({ message: `User ${user.name} limits updated successfully` });
+  } catch (error) {
+    console.error("Error updating user limits:", error);
     res.status(500).json({ message: error.message });
   }
 };

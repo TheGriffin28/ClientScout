@@ -1,4 +1,5 @@
 import { sendEmail } from "../services/emailService.js";
+import { generateAndSendOTP, verifyOTP } from "../utils/otpService.js";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import User from "../models/User.js";
@@ -27,10 +28,12 @@ export const registerUser = async (req, res) => {
     name,
     email,
     password: hashedPassword,
-    mobileNumber
+    mobileNumber,
+    isVerified: false, // New users are unverified until OTP is confirmed
   });
 
-  const token = generateToken(user._id);
+  // Generate and send OTP for email verification
+  await generateAndSendOTP(user);
 
   // Log user signup
   await logAdminAction({
@@ -39,24 +42,59 @@ export const registerUser = async (req, res) => {
     details: { name: user.name, email: user.email }
   });
 
-  res.cookie("token", token, {
-    httpOnly: true,
-    sameSite: "lax", // Changed from "strict" to "lax" for better localhost compatibility
-    secure: false,
-    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-  });
-
   res.status(201).json({
-    id: user._id,
-    name: user.name,
+    message: "User registered successfully. Please verify your email with the OTP sent to your inbox.",
+    userId: user._id,
     email: user.email,
-    mobileNumber: user.mobileNumber,
-    role: user.role,
-    isActive: user.isActive,
-    aiUsageCount: user.aiUsageCount,
-    lastAIUsedAt: user.lastAIUsedAt,
-    token // Include token in response for header-based auth
   });
+};
+
+export const verifyUserEmail = async (req, res) => {
+  const { userId, otp } = req.body;
+
+  try {
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const verificationResult = await verifyOTP(user, otp);
+
+    if (!verificationResult.success) {
+      return res.status(400).json({ message: verificationResult.message });
+    }
+
+    user.isVerified = true;
+    await user.save();
+
+    // Generate token and log in the user automatically after verification
+    const token = generateToken(user._id);
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: false,
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    });
+
+    res.status(200).json({
+      message: "Email verified successfully. You are now logged in.",
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      mobileNumber: user.mobileNumber,
+      role: user.role,
+      isActive: user.isActive,
+      isVerified: user.isVerified,
+      aiUsageCount: user.aiUsageCount,
+      lastAIUsedAt: user.lastAIUsedAt,
+      token
+    });
+  } catch (error) {
+    console.error("Error verifying email:", error);
+    res.status(500).json({ message: "Server error during email verification." });
+  }
 };
 
 export const loginUser = async (req, res) => {
@@ -75,9 +113,31 @@ export const loginUser = async (req, res) => {
     return res.status(403).json({ message: "Your account has been suspended. Please contact support." });
   }
 
+  if (!user.isVerified) {
+    // If user is not verified, resend OTP and ask for verification
+    await generateAndSendOTP(user);
+    return res.status(403).json({ 
+      message: "Your email is not verified. A new OTP has been sent to your email. Please verify to log in.",
+      userId: user._id,
+      email: user.email,
+      requiresVerification: true
+    });
+  }
+
   const isPasswordValid = await bcrypt.compare(password, user.password);
   if (!isPasswordValid) {
     return res.status(401).json({ message: "Invalid credentials" });
+  }
+
+  // If 2FA is enabled, send OTP and require verification
+  if (user.twoFactorEnabled) {
+    await generateAndSendOTP(user);
+    return res.status(200).json({
+      message: "Two-factor authentication required. An OTP has been sent to your email.",
+      userId: user._id,
+      email: user.email,
+      requiresTwoFactor: true
+    });
   }
 
   // Update last login
@@ -109,10 +169,64 @@ export const loginUser = async (req, res) => {
     mobileNumber: user.mobileNumber,
     role: user.role,
     isActive: user.isActive,
+    isVerified: user.isVerified,
     aiUsageCount: user.aiUsageCount,
     lastAIUsedAt: user.lastAIUsedAt,
     token // Include the token in the response
   });
+};
+
+export const verifyTwoFactor = async (req, res) => {
+  const { userId, otp } = req.body;
+
+  try {
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (!user.twoFactorEnabled) {
+      return res.status(400).json({ message: "Two-factor authentication is not enabled for this user." });
+    }
+
+    const verificationResult = await verifyOTP(user, otp);
+
+    if (!verificationResult.success) {
+      return res.status(400).json({ message: verificationResult.message });
+    }
+
+    // Update last login
+    user.lastLoginAt = new Date();
+    await user.save();
+
+    const token = generateToken(user._id);
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: false,
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    });
+
+    res.status(200).json({
+      message: "Two-factor authentication successful. You are now logged in.",
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      mobileNumber: user.mobileNumber,
+      role: user.role,
+      isActive: user.isActive,
+      isVerified: user.isVerified,
+      twoFactorEnabled: user.twoFactorEnabled,
+      aiUsageCount: user.aiUsageCount,
+      lastAIUsedAt: user.lastAIUsedAt,
+      token
+    });
+  } catch (error) {
+    console.error("Error verifying two-factor authentication:", error);
+    res.status(500).json({ message: "Server error during 2FA verification." });
+  }
 };
 
 export const getMe = async (req, res) => {
@@ -126,6 +240,8 @@ export const getMe = async (req, res) => {
     aiUsageCount: req.user.aiUsageCount,
     lastAIUsedAt: req.user.lastAIUsedAt,
     lastLoginAt: req.user.lastLoginAt,
+    isVerified: req.user.isVerified,
+    twoFactorEnabled: req.user.twoFactorEnabled,
     bio: req.user.bio,
     location: req.user.location,
     socialLinks: req.user.socialLinks,
@@ -184,6 +300,27 @@ export const updateProfile = async (req, res) => {
       res.status(404).json({ message: "User not found" });
     }
   } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const toggleTwoFactor = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    user.twoFactorEnabled = !user.twoFactorEnabled;
+    await user.save();
+
+    res.status(200).json({
+      message: `Two-factor authentication ${user.twoFactorEnabled ? "enabled" : "disabled"} successfully.`,
+      twoFactorEnabled: user.twoFactorEnabled,
+    });
+  } catch (error) {
+    console.error("Error toggling 2FA:", error);
     res.status(500).json({ message: "Server error" });
   }
 };

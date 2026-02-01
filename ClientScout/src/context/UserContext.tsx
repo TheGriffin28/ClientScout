@@ -31,6 +31,8 @@ interface User {
     host?: string;
     port?: number;
   };
+  maxDailyEmailsPerUser?: number;
+  maxDailyAICallsPerUser?: number;
 }
 
 interface UserContextType {

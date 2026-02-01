@@ -27,7 +27,13 @@ const userSchema = new mongoose.Schema(
     lastAIUsedAt: { type: Date },
 
     resetPasswordToken: String,
-    resetPasswordExpires: Date
+    resetPasswordExpires: Date,
+    otp: String,
+    otpExpires: Date,
+    isVerified: { type: Boolean, default: false },
+    twoFactorEnabled: { type: Boolean, default: false },
+    maxDailyEmailsPerUser: { type: Number, default: 50 }, // Default limit of 50 emails per day
+    maxDailyAICallsPerUser: { type: Number, default: 50 }, // Default limit of 50 AI calls per day
   },
   { timestamps: true }
 );

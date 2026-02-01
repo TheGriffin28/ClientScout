@@ -20,17 +20,27 @@ export default function SignInForm() {
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setError(""); // Clear previous errors
+    setError("");
     try {
       const response = await api.post("/auth/login", { email, password });
-      // Store token and redirect to dashboard
+      if (response.data.requiresTwoFactor && response.data.userId && response.data.email) {
+        const pendingTwoFactor = {
+          userId: response.data.userId,
+          email: response.data.email,
+          rememberMe: isChecked,
+        };
+        localStorage.setItem("pendingTwoFactor", JSON.stringify(pendingTwoFactor));
+        navigate("/verify-2fa", { state: pendingTwoFactor });
+        return;
+      }
+
       if (response.data.token) {
         if (isChecked) {
           localStorage.setItem("token", response.data.token);
-          sessionStorage.removeItem("token"); // Clean up if it was there
+          sessionStorage.removeItem("token");
         } else {
           sessionStorage.setItem("token", response.data.token);
-          localStorage.removeItem("token"); // Clean up if it was there
+          localStorage.removeItem("token");
         }
         
         // Refresh user context
@@ -48,13 +58,24 @@ export default function SignInForm() {
     } catch (err) {
       if (axios.isAxiosError(err)) {
         if (err.response) {
-          // Server responded with error
+          if (
+            err.response.status === 403 &&
+            err.response.data?.requiresVerification &&
+            err.response.data.userId &&
+            err.response.data.email
+          ) {
+            const pendingVerification = {
+              userId: err.response.data.userId,
+              email: err.response.data.email,
+            };
+            localStorage.setItem("pendingVerification", JSON.stringify(pendingVerification));
+            navigate("/verify-email", { state: pendingVerification });
+            return;
+          }
           setError(err.response.data?.message || "Login failed. Please check your credentials.");
         } else if (err.request) {
-          // Request was made but no response received
           setError("Network error. Please check your connection.");
         } else {
-          // Something else happened
           setError("An unexpected error occurred");
         }
       } else {

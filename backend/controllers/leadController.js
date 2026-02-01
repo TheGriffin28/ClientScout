@@ -327,9 +327,27 @@ export const generateEmail = async (req, res) => {
   }
 
   const lead = await Lead.findById(req.params.id);
+  const user = await User.findById(req.user._id);
 
   if (!lead || lead.user.toString() !== req.user._id.toString()) {
     return res.status(404).json({ message: "Lead not found" });
+  }
+
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
+  }
+
+  // Check AI usage limits
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Reset time to start of day
+
+  if (user.lastAIUsedAt && user.lastAIUsedAt.setHours(0, 0, 0, 0) < today.setHours(0, 0, 0, 0)) {
+    // If last AI use was on a previous day, reset count
+    user.aiUsageCount = 0;
+  }
+
+  if (user.aiUsageCount >= user.maxDailyAICallsPerUser) {
+    return res.status(403).json({ message: `Daily AI call limit (${user.maxDailyAICallsPerUser}) exceeded.` });
   }
 
   try {
@@ -352,10 +370,9 @@ export const generateEmail = async (req, res) => {
     await lead.save();
 
     // Increment AI Usage Count and store lastAIUsedAt
-    await User.findByIdAndUpdate(req.user._id, { 
-      $inc: { aiUsageCount: 1 },
-      lastAIUsedAt: new Date()
-    });
+    user.aiUsageCount += 1;
+    user.lastAIUsedAt = new Date();
+    await user.save();
 
     res.json(lead);
   } catch (error) {
@@ -391,7 +408,24 @@ export const sendLeadEmail = async (req, res) => {
     return res.status(400).json({ message: "Lead has no email address" });
   }
 
-  const user = req.user;
+  const user = await User.findById(req.user._id);
+
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
+  }
+
+  // Check email usage limits
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Reset time to start of day
+
+  if (user.lastEmailSentAt && user.lastEmailSentAt.setHours(0, 0, 0, 0) < today.setHours(0, 0, 0, 0)) {
+    // If last email sent was on a previous day, reset count
+    user.emailUsageCount = 0;
+  }
+
+  if (user.emailUsageCount >= user.maxDailyEmailsPerUser) {
+    return res.status(403).json({ message: `Daily email limit (${user.maxDailyEmailsPerUser}) exceeded.` });
+  }
 
   try {
     // Convert plain text body to simple HTML (replace newlines with <br/>)
@@ -440,6 +474,11 @@ export const sendLeadEmail = async (req, res) => {
       `,
       from: `${user.name} via ClientScout <info@clientscout.xyz>`,
     });
+
+    // Increment Email Usage Count and store lastEmailSentAt
+    user.emailUsageCount += 1;
+    user.lastEmailSentAt = new Date();
+    await user.save();
 
     // Log the contact automatically after sending email
     lead.lastContactedAt = new Date();
