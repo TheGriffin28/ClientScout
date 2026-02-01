@@ -47,6 +47,11 @@ export default function NotificationDropdown() {
       const seenHighPriority = JSON.parse(localStorage.getItem('seenHighPriority') || '[]');
       const seenDrafts = JSON.parse(localStorage.getItem('seenDrafts') || '[]');
       const seenAIInsights = JSON.parse(localStorage.getItem('seenAIInsights') || '[]');
+      const dismissedNotifications = JSON.parse(localStorage.getItem('dismissedNotifications') || '[]');
+
+      const todayStr = today.toISOString().split('T')[0];
+      const followupTodayId = `followup-today-${todayStr}`;
+      const followupOverdueId = `followup-overdue-${todayStr}`;
 
       // 1. Follow-ups Due Today
       const followUpsToday = leads.filter(lead => {
@@ -56,9 +61,9 @@ export default function NotificationDropdown() {
         return followDate.getTime() === today.getTime();
       });
 
-      if (followUpsToday.length > 0) {
+      if (followUpsToday.length > 0 && !dismissedNotifications.includes(followupTodayId)) {
         newNotifications.push({
-          id: 'followup-today',
+          id: followupTodayId,
           type: 'FOLLOWUP_TODAY',
           title: 'Follow-ups due today',
           message: `🔔 Follow-ups due today (${followUpsToday.length})`,
@@ -77,9 +82,9 @@ export default function NotificationDropdown() {
         return followDate.getTime() < today.getTime();
       });
 
-      if (followUpsOverdue.length > 0) {
+      if (followUpsOverdue.length > 0 && !dismissedNotifications.includes(followupOverdueId)) {
         newNotifications.push({
-          id: 'followup-overdue',
+          id: followupOverdueId,
           type: 'FOLLOWUP_OVERDUE',
           title: 'Overdue follow-ups',
           message: `⚠️ Overdue follow-ups (${followUpsOverdue.length})`,
@@ -145,6 +150,32 @@ export default function NotificationDropdown() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleClearAll = () => {
+    const seenHighPriority = JSON.parse(localStorage.getItem('seenHighPriority') || '[]');
+    const seenDrafts = JSON.parse(localStorage.getItem('seenDrafts') || '[]');
+    const seenAIInsights = JSON.parse(localStorage.getItem('seenAIInsights') || '[]');
+    const dismissedNotifications = JSON.parse(localStorage.getItem('dismissedNotifications') || '[]');
+
+    notifications.forEach(notification => {
+      if (notification.type === 'HIGH_PRIORITY' && notification.leadId) {
+        if (!seenHighPriority.includes(notification.leadId)) seenHighPriority.push(notification.leadId);
+      } else if (notification.type === 'DRAFT_READY' && notification.leadId) {
+        if (!seenDrafts.includes(notification.leadId)) seenDrafts.push(notification.leadId);
+      } else if (notification.type === 'AI_INSIGHTS' && notification.leadId) {
+        if (!seenAIInsights.includes(notification.leadId)) seenAIInsights.push(notification.leadId);
+      } else if (notification.type === 'FOLLOWUP_TODAY' || notification.type === 'FOLLOWUP_OVERDUE') {
+        if (!dismissedNotifications.includes(notification.id)) dismissedNotifications.push(notification.id);
+      }
+    });
+
+    localStorage.setItem('seenHighPriority', JSON.stringify(seenHighPriority));
+    localStorage.setItem('seenDrafts', JSON.stringify(seenDrafts));
+    localStorage.setItem('seenAIInsights', JSON.stringify(seenAIInsights));
+    localStorage.setItem('dismissedNotifications', JSON.stringify(dismissedNotifications));
+
+    fetchAndProcessNotifications();
   };
 
   const handleNotificationClick = (notification: Notification) => {
@@ -213,25 +244,35 @@ export default function NotificationDropdown() {
           <h5 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
             Notifications
           </h5>
-          <button
-            onClick={closeDropdown}
-            className="text-gray-500 transition dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-          >
-            <svg
-              className="fill-current"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
+          <div className="flex items-center gap-3">
+            {notifications.length > 0 && (
+              <button
+                onClick={handleClearAll}
+                className="text-xs font-medium text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400"
+              >
+                Clear All
+              </button>
+            )}
+            <button
+              onClick={closeDropdown}
+              className="text-gray-500 transition dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
             >
-              <path
-                fillRule="evenodd"
-                clipRule="evenodd"
-                d="M6.21967 7.28131C5.92678 6.98841 5.92678 6.51354 6.21967 6.22065C6.51256 5.92775 6.98744 5.92775 7.28033 6.22065L11.999 10.9393L16.7176 6.22078C17.0105 5.92789 17.4854 5.92788 17.7782 6.22078C18.0711 6.51367 18.0711 6.98855 17.7782 7.28144L13.0597 12L17.7782 16.7186C18.0711 17.0115 18.0711 17.4863 17.7782 17.7792C17.4854 18.0721 17.0105 18.0721 16.7176 17.7792L11.999 13.0607L7.28033 17.7794C6.98744 18.0722 6.51256 18.0722 6.21967 17.7794C5.92678 17.4865 5.92678 17.0116 6.21967 16.7187L10.9384 12L6.21967 7.28131Z"
-                fill="currentColor"
-              />
-            </svg>
-          </button>
+              <svg
+                className="fill-current"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  fillRule="evenodd"
+                  clipRule="evenodd"
+                  d="M6.21967 7.28131C5.92678 6.98841 5.92678 6.51354 6.21967 6.22065C6.51256 5.92775 6.98744 5.92775 7.28033 6.22065L11.999 10.9393L16.7176 6.22078C17.0105 5.92789 17.4854 5.92788 17.7782 6.22078C18.0711 6.51367 18.0711 6.98855 17.7782 7.28144L13.0597 12L17.7782 16.7186C18.0711 17.0115 18.0711 17.4863 17.7782 17.7792C17.4854 18.0721 17.0105 18.0721 16.7176 17.7792L11.999 13.0607L7.28033 17.7794C6.98744 18.0722 6.51256 18.0722 6.21967 17.7794C5.92678 17.4865 5.92678 17.0116 6.21967 16.7187L10.9384 12L6.21967 7.28131Z"
+                  fill="currentColor"
+                />
+              </svg>
+            </button>
+          </div>
         </div>
         <ul className="flex flex-col h-auto overflow-y-auto custom-scrollbar">
           {loading ? (

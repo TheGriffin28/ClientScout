@@ -391,17 +391,43 @@ export const sendLeadEmail = async (req, res) => {
     return res.status(400).json({ message: "Lead has no email address" });
   }
 
-  // Fetch user to get SMTP settings
-  const user = await User.findById(req.user._id);
-  if (!user.smtpSettings || !user.smtpSettings.email || !user.smtpSettings.password) {
-    return res.status(400).json({ 
-      message: "Please configure your SMTP settings in Profile Settings before sending emails." 
-    });
-  }
+  const user = req.user;
 
   try {
     // Convert plain text body to simple HTML (replace newlines with <br/>)
     const htmlBody = (body || "").replace(/\n/g, "<br/>");
+
+    // Construct Social Links HTML
+    let socialLinksHtml = '';
+    if (user.socialLinks) {
+        const links = [];
+        if (user.socialLinks.linkedin) links.push(`<a href="${user.socialLinks.linkedin}" style="color: #0077b5; text-decoration: none;">LinkedIn</a>`);
+        if (user.socialLinks.x) links.push(`<a href="${user.socialLinks.x}" style="color: #000; text-decoration: none;">X (Twitter)</a>`);
+        if (user.socialLinks.instagram) links.push(`<a href="${user.socialLinks.instagram}" style="color: #E1306C; text-decoration: none;">Instagram</a>`);
+        if (user.socialLinks.facebook) links.push(`<a href="${user.socialLinks.facebook}" style="color: #1877F2; text-decoration: none;">Facebook</a>`);
+        
+        if (links.length > 0) {
+            socialLinksHtml = `<p style="margin: 5px 0;"><strong>Socials:</strong> ${links.join(' | ')}</p>`;
+        }
+    }
+
+    const footerHtml = `
+      <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0 20px;">
+      <div style="font-size: 0.9em; color: #666; background-color: #f9f9f9; padding: 15px; border-radius: 5px;">
+        <p style="margin: 0 0 10px;">This email is sent via <strong>ClientScout</strong> on behalf of:</p>
+        <p style="margin: 5px 0; font-size: 1.1em; font-weight: bold; color: #333;">${user.name}</p>
+        <p style="margin: 5px 0;"><strong>Email:</strong> <a href="mailto:${user.email}" style="color: #2563eb; text-decoration: none;">${user.email}</a></p>
+        <p style="margin: 5px 0;"><strong>Phone:</strong> ${user.mobileNumber}</p>
+        ${socialLinksHtml}
+        
+        <p style="margin: 15px 0 5px;">
+          <a href="mailto:${user.email}" style="display: inline-block; background-color: #2563eb; color: #ffffff; padding: 8px 15px; text-decoration: none; border-radius: 4px; font-weight: bold; margin-right: 10px;">Email Me</a>
+          <a href="tel:${user.mobileNumber}" style="display: inline-block; background-color: #2563eb; color: #ffffff; padding: 8px 15px; text-decoration: none; border-radius: 4px; font-weight: bold;">Call Me</a>
+        </p>
+
+        <p style="margin: 15px 0 0; font-style: italic; font-size: 0.85em;">Please reply directly to the sender using the contact details above.</p>
+      </div>
+    `;
 
     await sendEmail({
       to: lead.email,
@@ -409,15 +435,10 @@ export const sendLeadEmail = async (req, res) => {
       html: `
         <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
           ${htmlBody}
+          ${footerHtml}
         </div>
       `,
-      from: `"${user.name}" <${user.smtpSettings.email}>`,
-      smtp: {
-        user: user.smtpSettings.email,
-        pass: user.smtpSettings.password,
-        host: user.smtpSettings.host,
-        port: user.smtpSettings.port,
-      },
+      from: `${user.name} via ClientScout <info@clientscout.xyz>`,
     });
 
     // Log the contact automatically after sending email
@@ -436,14 +457,6 @@ export const sendLeadEmail = async (req, res) => {
     console.error("Failed to send email:", error);
     
     let errorMessage = "Failed to send email";
-    if (error.message.includes("SMTP connection failed")) {
-      errorMessage = "SMTP Connection Error: Please check your SMTP settings (Host, Port, and App Password).";
-    } else if (error.message.includes("Invalid login") || error.message.includes("auth")) {
-      errorMessage = "SMTP Authentication Failed: Please verify your email and App Password.";
-    } else {
-      errorMessage = `Failed to send email: ${error.message}`;
-    }
-
     res.status(500).json({ message: errorMessage, error: error.message });
   }
 };

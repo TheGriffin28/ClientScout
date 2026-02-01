@@ -130,13 +130,12 @@ export const getMe = async (req, res) => {
     location: req.user.location,
     socialLinks: req.user.socialLinks,
     address: req.user.address,
-    smtpSettings: req.user.smtpSettings,
   };
   res.status(200).json(user);
 };
 
 export const updateProfile = async (req, res) => {
-  const { name, email, mobileNumber, bio, location, socialLinks, address, smtpSettings } = req.body;
+  const { name, email, mobileNumber, bio, location, socialLinks, address } = req.body;
 
   try {
     const user = await User.findById(req.user._id);
@@ -162,12 +161,7 @@ export const updateProfile = async (req, res) => {
         };
       }
 
-      if (smtpSettings) {
-        user.smtpSettings = {
-          ...user.smtpSettings,
-          ...smtpSettings
-        };
-      }
+
 
       const updatedUser = await user.save();
 
@@ -185,7 +179,6 @@ export const updateProfile = async (req, res) => {
         location: updatedUser.location,
         socialLinks: updatedUser.socialLinks,
         address: updatedUser.address,
-        smtpSettings: updatedUser.smtpSettings,
       });
     } else {
       res.status(404).json({ message: "User not found" });
