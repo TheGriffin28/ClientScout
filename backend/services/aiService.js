@@ -71,44 +71,62 @@ export const analyzeWebsite = async (url, businessName) => {
   }
 };
 
-export const generateEmailDraft = async (businessName, industry, contactName, painPoints, aiSummary, businessType, websiteObservations) => {
+export const generateEmailDraft = async (
+  businessName,
+  industry,
+  contactName,
+  painPoints,
+  aiSummary,
+  businessType,
+  websiteObservations
+) => {
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+
     const prompt = `
-      You are a senior digital conversion consultant who helps businesses improve lead quality and revenue through better website structure and trust-building. 
- 
-      Write a professional, highly personalized cold outreach email to a potential client. 
- 
-      Client Context: 
-      - Business Name: ${businessName} 
-      - Industry: ${industry || "Unknown"} 
-      - Business Type: ${businessType || "N/A"} 
-      - Website Insights: 
-        - Key Performance Issues: ${websiteObservations?.performanceIssues?.join(", ") || "None"} 
-        - Key Trust Issues: ${websiteObservations?.trustIssues?.join(", ") || "None"} 
-        - Key Conversion Issues: ${websiteObservations?.conversionIssues?.join(", ") || "None"} 
-      - Primary Business Pain Points: ${painPoints?.join(", ") || "General optimization gaps"} 
-      - Strategic Insight: ${aiSummary || "N/A"} 
- 
-      Instructions: 
-      - Choose ONLY the most impactful 1–2 website observations to mention. 
-      - Write in a calm, advisory tone (not salesy). 
-      - Show clear understanding of their industry and decision-makers. 
-      - Explain briefly how the issue could affect lead quality, conversions, or revenue. 
-      - Offer a low-friction CTA (e.g., short walkthrough, quick idea, brief chat). 
-      - Keep the email under 150 words. 
- 
-      Return ONLY valid JSON in this format: 
- 
-      { 
-        "subject": "Concise, non-spammy subject line", 
-        "body": "Email body text. Use \\n for line breaks." 
-      } 
-    `;
+You are a senior digital growth consultant specializing in website redesign, SEO, and conversion-focused structure.
+Your role is to help businesses grow digitally by turning their websites into high-performing growth assets.
+
+Write a professional, personalized cold outreach email.
+
+Client Context:
+- Business Name: ${businessName}
+- Industry: ${industry || "Unknown"}
+- Business Type: ${businessType || "N/A"}
+
+Website Insights:
+- Performance Issues: ${websiteObservations?.performanceIssues?.join(", ") || "None"}
+- Trust Issues: ${websiteObservations?.trustIssues?.join(", ") || "None"}
+- Conversion Issues: ${websiteObservations?.conversionIssues?.join(", ") || "None"}
+
+Primary Business Pain Points:
+${painPoints?.join(", ") || "General digital growth gaps"}
+
+Strategic Insight:
+${aiSummary || "N/A"}
+
+Instructions:
+- Choose ONLY the most impactful 1–2 website observations.
+- Position the message around website redesign + SEO + long-term digital growth.
+- Clearly imply that the current website may not fully support visibility, credibility, or lead generation.
+- Explain how redesign + SEO improvements affect real business outcomes (qualified leads, authority, growth).
+- Do NOT list services or packages.
+- Tone should be calm, advisory, and founder-friendly (not salesy).
+- End with a low-friction CTA (short walkthrough, quick idea, brief chat).
+- Keep the email under 150 words.
+
+Return ONLY valid JSON in this format:
+
+{
+  "subject": "Concise, non-spammy subject line",
+  "body": "Email body text. Use \\n for line breaks."
+}
+`;
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
+
     const jsonString = text.replace(/```json/g, "").replace(/```/g, "").trim();
     return JSON.parse(jsonString);
   } catch (error) {
@@ -121,13 +139,14 @@ export const generateWhatsAppDraft = async (businessName, industry, contactName,
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
     const prompt = `
-      You are a senior digital conversion consultant reaching out informally on WhatsApp. 
+      You are a senior web design and digital growth consultant reaching out informally on WhatsApp. 
  
-      Write a short, friendly, and respectful WhatsApp message to start a conversation. 
+      Write a short, friendly, and respectful WhatsApp message to start a conversation and introduce how you can help by redesigning their website and improving their online performance. 
  
       Client Context: 
       - Business Name: ${businessName} 
       - Industry: ${industry || "their industry"} 
+      - Contact Name (if available): ${contactName || "there"} 
       - One Key Website Observation: ${
         websiteObservations?.conversionIssues?.[0] ||
         websiteObservations?.trustIssues?.[0] ||
@@ -138,9 +157,10 @@ export const generateWhatsAppDraft = async (businessName, industry, contactName,
       Instructions: 
       - 2–3 sentences maximum. 
       - Friendly, human, and conversational. 
-      - Mention ONE specific observation or quick win. 
-      - Do NOT pitch services. 
-      - End with a soft question (easy to reply yes/no). 
+      - Naturally mention that you can redesign their website and improve SEO and loading speed, linking this to better visibility and more leads. 
+      - You may briefly mention that you can also help with other related digital growth services, but keep it light. 
+      - Reference ONE specific observation or quick win if it helps make the message more concrete. 
+      - End with a soft question (easy to reply yes/no), such as asking if they would like a quick free review or a few redesign ideas. 
  
       Return ONLY the raw message text. 
       Do not use markdown, bullet points, or emojis. 
