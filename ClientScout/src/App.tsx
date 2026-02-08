@@ -12,6 +12,7 @@ import Leads from "./pages/leads";
 import FollowUps from "./pages/followups";
 import Settings from "./pages/settings";
 import LeadDetail from "./pages/LeadDetail";
+import MapLeadSearch from "./pages/MapLeadSearch";
 
 import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
@@ -44,6 +45,7 @@ export default function App() {
           <Route path="/profile" element={<UserProfiles />} />
           <Route path="/leads" element={<Leads />} />
           <Route path="/leads/:id" element={<LeadDetail />} />
+          <Route path="/maps-search" element={<MapLeadSearch />} />
           <Route path="/follow-ups" element={<FollowUps />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/support" element={<Support />} />

@@ -66,11 +66,23 @@ const AdminUsers: React.FC = () => {
     }
   };
 
-  const handleLimitChange = async (user: AdminUser, field: "maxDailyEmailsPerUser" | "maxDailyAICallsPerUser", value: number) => {
+  const handleLimitChange = async (
+    user: AdminUser,
+    field: "maxDailyEmailsPerUser" | "maxDailyAICallsPerUser" | "maxDailyMapSearchesPerUser",
+    value: number
+  ) => {
     try {
       await adminService.updateUserLimits(user.id, { [field]: value });
       setUsers(users.map(u => u.id === user.id ? { ...u, [field]: value } : u));
-      toast.success(`User ${user.name} ${field === "maxDailyEmailsPerUser" ? "email limit" : "AI call limit"} updated to ${value}`);
+      toast.success(
+        `User ${user.name} ${
+          field === "maxDailyEmailsPerUser"
+            ? "email limit"
+            : field === "maxDailyAICallsPerUser"
+            ? "AI call limit"
+            : "Maps search limit"
+        } updated to ${value}`
+      );
     } catch (error) {
       toast.error("Failed to update user limits");
     }
@@ -98,8 +110,10 @@ const AdminUsers: React.FC = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">AI Usage</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last AI Use</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Maps Searches Today</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Max Emails</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Max AI Calls</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Max Map Searches</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
@@ -133,6 +147,11 @@ const AdminUsers: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                       {user.lastAIUsedAt ? new Date(user.lastAIUsedAt).toLocaleDateString() : "Never"}
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      {typeof user.mapSearchCount === "number"
+                        ? `${user.mapSearchCount}${user.maxDailyMapSearchesPerUser ? ` / ${user.maxDailyMapSearchesPerUser}` : ""}`
+                        : "0"}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <input
                         type="number"
@@ -149,6 +168,15 @@ const AdminUsers: React.FC = () => {
                         value={user.maxDailyAICallsPerUser || 0}
                         onChange={(e) => handleLimitChange(user, "maxDailyAICallsPerUser", parseInt(e.target.value))}
                         className="w-20 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-1 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                      />
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <input
+                        type="number"
+                        min="0"
+                        value={user.maxDailyMapSearchesPerUser || 0}
+                        onChange={(e) => handleLimitChange(user, "maxDailyMapSearchesPerUser", parseInt(e.target.value))}
+                        className="w-24 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-1 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
                       />
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">

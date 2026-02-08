@@ -12,7 +12,8 @@ import {
   generateEmail,
   sendLeadEmail,
   generateWhatsApp,
-  logContact
+  logContact,
+  trackMapSearchUsage
 } from "../controllers/leadController.js";
 
 import { protect } from "../middleware/authMiddleware.js";
@@ -26,6 +27,7 @@ router.route("/")
 // Specific routes must come before parameterized routes
 router.get("/stats", protect, leadStats);
 router.get("/followups", protect, getFollowUps);
+router.post("/maps/track-search", protect, trackMapSearchUsage);
 router.put("/:id/status", protect, updateLeadStatus);
 router.post("/:id/analyze", protect, analyzeLead);
 router.post("/:id/generate-email", protect, generateEmail);

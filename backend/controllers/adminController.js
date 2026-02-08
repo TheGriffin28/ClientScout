@@ -119,7 +119,10 @@ export const getAllUsers = async (req, res) => {
       lastLoginAt: user.lastLoginAt,
       lastAIUsedAt: user.lastAIUsedAt,
       maxDailyEmailsPerUser: user.maxDailyEmailsPerUser,
-      maxDailyAICallsPerUser: user.maxDailyAICallsPerUser
+      maxDailyAICallsPerUser: user.maxDailyAICallsPerUser,
+      mapSearchCount: user.mapSearchCount || 0,
+      lastMapSearchAt: user.lastMapSearchAt,
+      maxDailyMapSearchesPerUser: user.maxDailyMapSearchesPerUser
     }));
 
     res.json(formattedUsers);
@@ -185,7 +188,7 @@ export const updateUserRole = async (req, res) => {
 export const updateUserLimits = async (req, res) => {
   try {
     const { id } = req.params;
-    const { maxDailyEmailsPerUser, maxDailyAICallsPerUser } = req.body;
+    const { maxDailyEmailsPerUser, maxDailyAICallsPerUser, maxDailyMapSearchesPerUser } = req.body;
 
     const user = await User.findById(id);
     if (!user) {
@@ -198,6 +201,9 @@ export const updateUserLimits = async (req, res) => {
     if (maxDailyAICallsPerUser !== undefined) {
       user.maxDailyAICallsPerUser = maxDailyAICallsPerUser;
     }
+    if (maxDailyMapSearchesPerUser !== undefined) {
+      user.maxDailyMapSearchesPerUser = maxDailyMapSearchesPerUser;
+    }
     await user.save();
 
     // Log user limits change
@@ -208,7 +214,8 @@ export const updateUserLimits = async (req, res) => {
       details: { 
         email: user.email, 
         maxDailyEmailsPerUser, 
-        maxDailyAICallsPerUser 
+        maxDailyAICallsPerUser,
+        maxDailyMapSearchesPerUser
       }
     });
 

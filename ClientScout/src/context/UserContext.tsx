@@ -33,6 +33,9 @@ interface User {
   };
   maxDailyEmailsPerUser?: number;
   maxDailyAICallsPerUser?: number;
+  mapSearchCount?: number;
+  lastMapSearchAt?: string;
+  maxDailyMapSearchesPerUser?: number;
 }
 
 interface UserContextType {

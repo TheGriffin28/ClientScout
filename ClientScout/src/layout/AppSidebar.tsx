@@ -29,11 +29,15 @@ const navItems: NavItem[] = [
     path: "/",
     icon: <GridIcon />,
   },
-  
   {
     name: "Leads",
     path: "/leads",
     icon: <UserCircleIcon />,
+  },
+  {
+    name: "Maps Search",
+    path: "/maps-search",
+    icon: <ListIcon />,
   },
   {
     name: "Follow Ups",

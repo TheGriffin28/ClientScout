@@ -555,3 +555,40 @@ export const generateWhatsApp = async (req, res) => {
     res.status(500).json({ message: "Failed to generate WhatsApp message", error: error.message });
   }
 };
+
+export const trackMapSearchUsage = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (user.lastMapSearchAt && user.lastMapSearchAt.setHours(0, 0, 0, 0) < today.getTime()) {
+      user.mapSearchCount = 0;
+    }
+
+    const limit = typeof user.maxDailyMapSearchesPerUser === "number" ? user.maxDailyMapSearchesPerUser : 0;
+
+    if (limit > 0 && user.mapSearchCount >= limit) {
+      return res.status(403).json({ message: `Daily Google Maps search limit (${limit}) exceeded.` });
+    }
+
+    user.mapSearchCount += 1;
+    user.lastMapSearchAt = new Date();
+    await user.save();
+
+    const remaining = limit > 0 ? limit - user.mapSearchCount : null;
+
+    res.json({
+      usedToday: user.mapSearchCount,
+      limit,
+      remaining,
+    });
+  } catch (error) {
+    console.error("Error tracking map search usage:", error);
+    res.status(500).json({ message: "Failed to track map search usage" });
+  }
+};

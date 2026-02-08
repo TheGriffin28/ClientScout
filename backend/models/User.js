@@ -25,6 +25,8 @@ const userSchema = new mongoose.Schema(
     lastLoginAt: { type: Date },
     aiUsageCount: { type: Number, default: 0 },
     lastAIUsedAt: { type: Date },
+    mapSearchCount: { type: Number, default: 0 },
+    lastMapSearchAt: { type: Date },
 
     resetPasswordToken: String,
     resetPasswordExpires: Date,
@@ -34,6 +36,7 @@ const userSchema = new mongoose.Schema(
     twoFactorEnabled: { type: Boolean, default: false },
     maxDailyEmailsPerUser: { type: Number, default: 50 }, // Default limit of 50 emails per day
     maxDailyAICallsPerUser: { type: Number, default: 50 }, // Default limit of 50 AI calls per day
+    maxDailyMapSearchesPerUser: { type: Number, default: 50 },
   },
   { timestamps: true }
 );

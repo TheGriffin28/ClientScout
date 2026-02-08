@@ -42,6 +42,31 @@ export const registerUser = async (req, res) => {
     details: { name: user.name, email: user.email }
   });
 
+  // Notify admins about new user signup
+  const admins = await User.find({ role: "admin" });
+  for (const adminUser of admins) {
+    await sendEmail({
+      to: adminUser.email,
+      subject: "New User Signup Notification",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
+          <h2 style="color: #4f46e5; text-align: center;">New User Signup!</h2>
+          <p>Hello Admin,</p>
+          <p>A new user has just signed up on ClientScout:</p>
+          <ul>
+            <li><strong>Name:</strong> ${user.name}</li>
+            <li><strong>Email:</strong> ${user.email}</li>
+            <li><strong>Mobile Number:</strong> ${user.mobileNumber}</li>
+            <li><strong>Signup Date:</strong> ${new Date(user.createdAt).toLocaleString()}</li>
+          </ul>
+          <p>Please review their account if necessary.</p>
+          <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+          <p style="font-size: 12px; color: #888; text-align: center;">ClientScout Team</p>
+        </div>
+      `,
+    });
+  }
+
   res.status(201).json({
     message: "User registered successfully. Please verify your email with the OTP sent to your inbox.",
     userId: user._id,
@@ -89,6 +114,9 @@ export const verifyUserEmail = async (req, res) => {
       isVerified: user.isVerified,
       aiUsageCount: user.aiUsageCount,
       lastAIUsedAt: user.lastAIUsedAt,
+      mapSearchCount: user.mapSearchCount,
+      lastMapSearchAt: user.lastMapSearchAt,
+      maxDailyMapSearchesPerUser: user.maxDailyMapSearchesPerUser,
       token
     });
   } catch (error) {
@@ -172,6 +200,9 @@ export const loginUser = async (req, res) => {
     isVerified: user.isVerified,
     aiUsageCount: user.aiUsageCount,
     lastAIUsedAt: user.lastAIUsedAt,
+    mapSearchCount: user.mapSearchCount,
+    lastMapSearchAt: user.lastMapSearchAt,
+    maxDailyMapSearchesPerUser: user.maxDailyMapSearchesPerUser,
     token // Include the token in the response
   });
 };
@@ -221,6 +252,9 @@ export const verifyTwoFactor = async (req, res) => {
       twoFactorEnabled: user.twoFactorEnabled,
       aiUsageCount: user.aiUsageCount,
       lastAIUsedAt: user.lastAIUsedAt,
+      mapSearchCount: user.mapSearchCount,
+      lastMapSearchAt: user.lastMapSearchAt,
+      maxDailyMapSearchesPerUser: user.maxDailyMapSearchesPerUser,
       token
     });
   } catch (error) {
@@ -240,6 +274,9 @@ export const getMe = async (req, res) => {
     aiUsageCount: req.user.aiUsageCount,
     lastAIUsedAt: req.user.lastAIUsedAt,
     lastLoginAt: req.user.lastLoginAt,
+    mapSearchCount: req.user.mapSearchCount,
+    lastMapSearchAt: req.user.lastMapSearchAt,
+    maxDailyMapSearchesPerUser: req.user.maxDailyMapSearchesPerUser,
     isVerified: req.user.isVerified,
     twoFactorEnabled: req.user.twoFactorEnabled,
     bio: req.user.bio,
@@ -291,6 +328,9 @@ export const updateProfile = async (req, res) => {
         aiUsageCount: updatedUser.aiUsageCount,
         lastAIUsedAt: updatedUser.lastAIUsedAt,
         lastLoginAt: updatedUser.lastLoginAt,
+        mapSearchCount: updatedUser.mapSearchCount,
+        lastMapSearchAt: updatedUser.lastMapSearchAt,
+        maxDailyMapSearchesPerUser: updatedUser.maxDailyMapSearchesPerUser,
         bio: updatedUser.bio,
         location: updatedUser.location,
         socialLinks: updatedUser.socialLinks,
