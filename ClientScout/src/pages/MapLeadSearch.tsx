@@ -245,13 +245,23 @@ export default function MapLeadSearch() {
       }
 
       setSearchState("loading");
+      let searchLocation = location.trim();
+      let searchLl = ll.trim();
+
+      if (searchLocation.toLowerCase() === "mumbai") {
+        searchLl = "@19.0728,72.8826,14z";
+        searchLocation = undefined; // Explicitly set to undefined to not send it
+      } else if (searchLocation) {
+        searchLocation = `${searchLocation}, India`;
+      }
+
       const leads = await searchGoogleMapsLeads({
         query: query.trim(),
-        location: location.trim() || undefined,
-        ll: ll.trim() || undefined,
+        location: searchLocation,
+        ll: searchLl || undefined,
         page,
         hl: "en",
-        gl: "in",
+        // gl: "in", // Removed gl parameter to rely solely on formatted location
       });
       setResults(leads);
       setSearchState("loaded");
@@ -333,13 +343,23 @@ export default function MapLeadSearch() {
     setPage((prev) => prev + 1);
     try {
       setSearchState("loading");
+      let searchLocation = location.trim();
+      let searchLl = ll.trim();
+
+      if (searchLocation.toLowerCase() === "mumbai") {
+        searchLl = "@19.0728,72.8826,14z";
+        searchLocation = undefined;
+      } else if (searchLocation) {
+        searchLocation = `${searchLocation}, India`;
+      }
+
       const leads = await searchGoogleMapsLeads({
         query: query.trim(),
-        location: location.trim() || undefined,
-        ll: ll.trim() || undefined,
+        location: searchLocation,
+        ll: searchLl || undefined,
         page: page + 1,
         hl: "en",
-        gl: "in",
+        // gl: "in",
       });
       setResults(leads);
       setSearchState("loaded");
@@ -362,13 +382,23 @@ export default function MapLeadSearch() {
     setPage(newPage);
     try {
       setSearchState("loading");
+      let searchLocation = location.trim();
+      let searchLl = ll.trim();
+
+      if (searchLocation.toLowerCase() === "mumbai") {
+        searchLl = "@19.0728,72.8826,14z";
+        searchLocation = undefined;
+      } else if (searchLocation) {
+        searchLocation = `${searchLocation}, India`;
+      }
+
       const leads = await searchGoogleMapsLeads({
         query: query.trim(),
-        location: location.trim() || undefined,
-        ll: ll.trim() || undefined,
+        location: searchLocation,
+        ll: searchLl || undefined,
         page: newPage,
         hl: "en",
-        gl: "in",
+        // gl: "in",
       });
       setResults(leads);
       setSearchState("loaded");
