@@ -245,8 +245,8 @@ export default function MapLeadSearch() {
       }
 
       setSearchState("loading");
-      let searchLocation = location.trim();
-      let searchLl = ll.trim();
+      let searchLocation: string | undefined = location.trim();
+      let searchLl: string | undefined = ll.trim();
 
       if (searchLocation.toLowerCase() === "mumbai") {
         searchLl = "@19.0728,72.8826,14z";
@@ -343,8 +343,8 @@ export default function MapLeadSearch() {
     setPage((prev) => prev + 1);
     try {
       setSearchState("loading");
-      let searchLocation = location.trim();
-      let searchLl = ll.trim();
+      let searchLocation: string | undefined = location.trim();
+      let searchLl: string | undefined = ll.trim();
 
       if (searchLocation.toLowerCase() === "mumbai") {
         searchLl = "@19.0728,72.8826,14z";
@@ -382,8 +382,8 @@ export default function MapLeadSearch() {
     setPage(newPage);
     try {
       setSearchState("loading");
-      let searchLocation = location.trim();
-      let searchLl = ll.trim();
+      let searchLocation: string | undefined = location.trim();
+      let searchLl: string | undefined = ll.trim();
 
       if (searchLocation.toLowerCase() === "mumbai") {
         searchLl = "@19.0728,72.8826,14z";
