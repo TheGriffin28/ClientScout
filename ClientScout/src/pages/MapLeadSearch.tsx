@@ -14,9 +14,7 @@ import {
   FaMapMarkerAlt,
   FaGlobe,
   FaStar,
-  FaExternalLinkAlt,
   FaPhoneAlt,
-  FaEnvelope,
   FaHistory,
   FaFilter,
   FaPlus,
@@ -103,14 +101,7 @@ export default function MapLeadSearch() {
   const [history, setHistory] = useState<SearchHistoryItem[]>([]);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showHistoryDropdown, setShowHistoryDropdown] = useState(false);
-  const [activeTab, setActiveTab] = useState<"search" | "recent">("search");
   const [hideWithWebsite, setHideWithWebsite] = useState(false);
-  const [mapUsageLoading, setMapUsageLoading] = useState(false);
-  const [lastMapUsage, setLastMapUsage] = useState<{
-    usedToday: number;
-    limit: number | null;
-    remaining: number | null;
-  } | null>(null);
 
   useEffect(() => {
     try {
@@ -215,7 +206,6 @@ export default function MapLeadSearch() {
     }
 
     try {
-      setMapUsageLoading(true);
       try {
         const usageResponse = await api.post("/leads/maps/track-search");
         const data = usageResponse.data as {
@@ -223,7 +213,6 @@ export default function MapLeadSearch() {
           limit: number | null;
           remaining: number | null;
         };
-        setLastMapUsage(data);
         if (user) {
           const limit = typeof user.maxDailyMapSearchesPerUser === "number" ? user.maxDailyMapSearchesPerUser : undefined;
           const updatedUser = {
@@ -256,8 +245,6 @@ export default function MapLeadSearch() {
           setSearchState("idle");
           return;
         }
-      } finally {
-        setMapUsageLoading(false);
       }
 
       setSearchState("loading");
