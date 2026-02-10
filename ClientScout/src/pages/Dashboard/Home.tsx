@@ -2,13 +2,15 @@
 import { useEffect, useState } from "react";
 import { getLeads, Lead } from "../../services/leadService";
 import PrivateRoute from "../../components/auth/PrivateRoute";
+import { useUser } from "../../context/UserContext";
 import LeadStatusChart from "../../components/dashboard/charts/LeadStatusChart";
 import FollowUpChart from "../../components/dashboard/charts/FollowUpChart";
 import ActivityChart from "../../components/dashboard/charts/ActivityChart";
-import { FiUsers, FiPhoneCall, FiCheckCircle, FiClock, FiTrendingUp, FiCalendar } from "react-icons/fi";
+import { FiUsers, FiPhoneCall, FiCheckCircle, FiClock, FiTrendingUp, FiCalendar, FiMapPin } from "react-icons/fi";
 import { CardSkeleton, ChartSkeleton } from "../../components/ui/Skeleton";
 
 export default function Home() {
+  const { user } = useUser();
   const [loading, setLoading] = useState(true);
   
   // Stats state
@@ -213,6 +215,13 @@ export default function Home() {
                 trendUp={true}
               />
               <CardDataStats 
+                title="Map Quota" 
+                total={`${user?.mapSearchCount || 0}/${user?.maxDailyMapSearchesPerUser || 10}`} 
+                type="quota"
+                trend="Daily searches"
+                trendUp={true}
+              />
+              <CardDataStats 
                 title="Contacted Leads" 
                 total={statusData.Contacted.toString()} 
                 type="contacted_count"
@@ -270,6 +279,9 @@ const CardDataStats = ({ title, total, type, trend, trendUp }: { title: string; 
   } else if (type === 'score') {
     Icon = FiTrendingUp; // Using FiTrendingUp for score
     colorClass = "text-pink-500 bg-pink-500/10";
+  } else if (type === 'quota') {
+    Icon = FiMapPin;
+    colorClass = "text-indigo-500 bg-indigo-500/10";
   } else if (type === 'contacted_count') {
     Icon = FiPhoneCall; // Reusing FiPhoneCall for contacted count
     colorClass = "text-blue-500 bg-blue-500/10";
