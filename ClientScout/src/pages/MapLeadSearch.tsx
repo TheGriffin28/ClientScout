@@ -15,6 +15,7 @@ import {
   FaGlobe,
   FaStar,
   FaPhoneAlt,
+  FaEnvelope,
   FaHistory,
   FaFilter,
   FaPlus,
@@ -723,6 +724,14 @@ export default function MapLeadSearch() {
                                 <FaPhoneAlt size={12} />
                               </div>
                               <span className="font-medium">{item.phone}</span>
+                            </div>
+                          )}
+                          {item.email && (
+                            <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
+                              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-50 dark:bg-gray-800">
+                                <FaEnvelope size={12} className="text-blue-500" />
+                              </div>
+                              <span className="font-medium truncate" title={item.email}>{item.email}</span>
                             </div>
                           )}
                           {item.website && (
