@@ -6,6 +6,7 @@ import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import leadRoutes from "./routes/leadRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
+import paymentRoutes from "./routes/paymentRoutes.js";
 import { setupCronJobs } from "./cron/followUpCron.js";
 
 
@@ -18,6 +19,7 @@ const PORT = process.env.PORT || 5000;
 
 /* ✅ BODY PARSER (THIS FIXES YOUR ISSUE) */
 app.use(express.json());
+app.use('/uploads', express.static('uploads'));
 
 app.use(cookieParser());
 app.use(cors({ 
@@ -51,6 +53,7 @@ app.use(cors({
 app.use("/api/auth", authRoutes);
 app.use("/api/leads", leadRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/payment", paymentRoutes);
 
 app.get("/", (req, res) => {
   res.send("ClientScout API running 🚀");

@@ -31,11 +31,16 @@ interface User {
     host?: string;
     port?: number;
   };
-  maxDailyEmailsPerUser?: number;
-  maxDailyAICallsPerUser?: number;
+  maxMonthlyEmailsPerUser?: number;
+  emailUsageCount?: number;
+  lastEmailSentAt?: string;
+  maxMonthlyAICallsPerUser?: number;
   mapSearchCount?: number;
   lastMapSearchAt?: string;
-  maxDailyMapSearchesPerUser?: number;
+  maxMonthlyMapSearchesPerUser?: number;
+  extraEmailCredits?: number;
+  extraAICallsCredits?: number;
+  extraMapSearchCredits?: number;
 }
 
 interface UserContextType {

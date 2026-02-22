@@ -23,6 +23,9 @@ import AdminDashboard from "./pages/Admin/Dashboard";
 import AdminUsers from "./pages/Admin/Users";
 import AdminSettings from "./pages/Admin/Settings";
 import AdminLogs from "./pages/Admin/Logs";
+import Transactions from "./pages/Admin/Transactions";
+import PurchaseCredits from "./pages/PurchaseCredits";
+import AdminPricing from "./pages/Admin/Pricing";
 import AdminRoute from "./components/auth/AdminRoute";
 
 export default function App() {
@@ -49,6 +52,7 @@ export default function App() {
           <Route path="/follow-ups" element={<FollowUps />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/support" element={<Support />} />
+          <Route path="/purchase-credits" element={<PurchaseCredits />} />
           
           {/* Admin Routes */}
           <Route 
@@ -76,10 +80,26 @@ export default function App() {
               } 
             />
             <Route 
+              path="/admin/transactions" 
+              element={
+                <AdminRoute>
+                  <Transactions />
+                </AdminRoute>
+              } 
+            />
+            <Route 
               path="/admin/logs" 
               element={
                 <AdminRoute>
                   <AdminLogs />
+                </AdminRoute>
+              } 
+            />
+            <Route 
+              path="/admin/pricing" 
+              element={
+                <AdminRoute>
+                  <AdminPricing />
                 </AdminRoute>
               } 
             />

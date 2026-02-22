@@ -25,6 +25,9 @@ import {
   FaChevronRight,
   FaBuilding,
   FaClock,
+  FaHeart,
+  FaRegHeart,
+  FaTrash,
 } from "react-icons/fa";
 import api from "../services/api";
 import { useUser } from "../context/UserContext";
@@ -43,6 +46,7 @@ type SearchHistoryItem = {
 
 const MAPS_HISTORY_KEY = "clientScout_maps_search_history";
 const MAPS_HISTORY_LIMIT = 10;
+const MAPS_WISHLIST_KEY = "clientScout_maps_wishlist";
 
 const getWeakWebsiteFlags = (website?: string): string[] => {
   if (!website) {
@@ -103,6 +107,58 @@ export default function MapLeadSearch() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showHistoryDropdown, setShowHistoryDropdown] = useState(false);
   const [hideWithWebsite, setHideWithWebsite] = useState(false);
+  const [wishlist, setWishlist] = useState<MapsLeadResult[]>([]);
+  const [showWishlist, setShowWishlist] = useState(false);
+
+  useEffect(() => {
+    try {
+      const storedWishlist = localStorage.getItem(MAPS_WISHLIST_KEY);
+      if (storedWishlist) {
+        const parsed = JSON.parse(storedWishlist);
+        if (Array.isArray(parsed)) {
+          setWishlist(parsed);
+        }
+      }
+    } catch {
+      localStorage.removeItem(MAPS_WISHLIST_KEY);
+    }
+  }, []);
+
+  const saveWishlist = (newWishlist: MapsLeadResult[]) => {
+    setWishlist(newWishlist);
+    try {
+      localStorage.setItem(MAPS_WISHLIST_KEY, JSON.stringify(newWishlist));
+    } catch {
+      console.error("Failed to save wishlist");
+    }
+  };
+
+  const addToWishlist = (item: MapsLeadResult) => {
+    if (wishlist.some((w) => w.id === item.id)) {
+      return;
+    }
+    const newWishlist = [item, ...wishlist];
+    saveWishlist(newWishlist);
+    toast.success("Added to wishlist");
+  };
+
+  const removeFromWishlist = (id: string) => {
+    const newWishlist = wishlist.filter((item) => item.id !== id);
+    saveWishlist(newWishlist);
+    toast.success("Removed from wishlist");
+  };
+
+  const isInWishlist = (id: string) => {
+    return wishlist.some((item) => item.id === id);
+  };
+
+  const toggleWishlist = (item: MapsLeadResult) => {
+    if (isInWishlist(item.id)) {
+      removeFromWishlist(item.id);
+    } else {
+      addToWishlist(item);
+    }
+  };
 
   useEffect(() => {
     try {
@@ -213,14 +269,16 @@ export default function MapLeadSearch() {
           usedToday: number;
           limit: number | null;
           remaining: number | null;
+          extraRemaining: number | null;
         };
         if (user) {
-          const limit = typeof user.maxDailyMapSearchesPerUser === "number" ? user.maxDailyMapSearchesPerUser : undefined;
+          const limit = typeof user.maxMonthlyMapSearchesPerUser === "number" ? user.maxMonthlyMapSearchesPerUser : undefined;
           const updatedUser = {
             ...user,
             mapSearchCount: data.usedToday,
             lastMapSearchAt: new Date().toISOString(),
-            maxDailyMapSearchesPerUser: limit,
+            maxMonthlyMapSearchesPerUser: limit,
+            extraMapSearchCredits: data.extraRemaining ?? user.extraMapSearchCredits,
           };
           setUser(updatedUser);
         }
@@ -265,6 +323,7 @@ export default function MapLeadSearch() {
         ll: searchLl || undefined,
         page,
         hl: "en",
+        gl: "in",
       });
       setResults(leads);
       setSearchState("loaded");
@@ -363,6 +422,7 @@ export default function MapLeadSearch() {
         ll: searchLl || undefined,
         page: nextPage,
         hl: "en",
+        gl: "in",
       });
       setResults(leads);
       setSearchState("loaded");
@@ -401,6 +461,7 @@ export default function MapLeadSearch() {
         ll: searchLl || undefined,
         page: newPage,
         hl: "en",
+        gl: "in",
       });
       setResults(leads);
       setSearchState("loaded");
@@ -465,16 +526,20 @@ export default function MapLeadSearch() {
                 </Badge>
                 {user && (
                   <Badge color="warning" variant="solid" size="md" startIcon={<FaInfoCircle size={12} />}>
-                    Quota: {user.mapSearchCount || 0} / {user.maxDailyMapSearchesPerUser || 10}
+                    Quota: {user.mapSearchCount || 0} / {user.maxMonthlyMapSearchesPerUser || 100}
+                    {user.extraMapSearchCredits && user.extraMapSearchCredits > 0 ? ` (+${user.extraMapSearchCredits} Extra)` : ""}
                   </Badge>
                 )}
               </div>
 
-              <div className="mt-8">
-                <div className="relative inline-block">
+              <div className="mt-8 flex flex-col sm:flex-row gap-4">
+                <div className="relative">
                   <button
                     type="button"
-                    onClick={() => setShowHistoryDropdown(!showHistoryDropdown)}
+                    onClick={() => {
+                      setShowHistoryDropdown(!showHistoryDropdown);
+                      setShowWishlist(false);
+                    }}
                     className="flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2 text-sm font-medium text-white transition-all hover:bg-white/20 hover:shadow-lg ring-1 ring-white/20"
                   >
                     <FaHistory className="text-blue-400" />
@@ -485,7 +550,7 @@ export default function MapLeadSearch() {
                   </button>
 
                   {showHistoryDropdown && (
-                    <div className="absolute left-0 mt-3 w-72 rounded-2xl border border-white/10 bg-gray-900/95 p-5 shadow-2xl backdrop-blur-xl z-40 ring-1 ring-white/20 animate-in fade-in zoom-in-95 duration-200">
+                    <div className="absolute left-0 mt-3 w-[calc(100vw-4rem)] sm:w-72 rounded-2xl border border-white/10 bg-gray-900/95 p-5 shadow-2xl backdrop-blur-xl z-40 ring-1 ring-white/20 animate-in fade-in zoom-in-95 duration-200">
                       <div className="mb-4 flex items-center justify-between">
                         <h3 className="text-sm font-bold text-white flex items-center gap-2">
                           <FaHistory className="text-blue-400" size={12} />
@@ -509,7 +574,7 @@ export default function MapLeadSearch() {
                           <p className="text-xs text-gray-500">No recent searches yet.</p>
                         </div>
                       ) : (
-                        <div className="space-y-2 max-h-64 overflow-y-auto pr-1 custom-scrollbar">
+                        <div className="space-y-2 max-h-[60vh] sm:max-h-64 overflow-y-auto pr-1 custom-scrollbar">
                           {history.map((item, index) => (
                             <button
                               key={index}
@@ -530,6 +595,77 @@ export default function MapLeadSearch() {
                                 <span className="truncate">{item.location || "Global"}</span>
                               </div>
                             </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowWishlist(!showWishlist);
+                      setShowHistoryDropdown(false);
+                    }}
+                    className="flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2 text-sm font-medium text-white transition-all hover:bg-white/20 hover:shadow-lg ring-1 ring-white/20"
+                  >
+                    <FaHeart className="text-red-400" />
+                    <span>Wishlist</span>
+                    <span className="ml-1 rounded-md bg-red-500/20 px-1.5 py-0.5 text-[10px] font-bold text-red-300">
+                      {wishlist.length}
+                    </span>
+                  </button>
+
+                  {showWishlist && (
+                    <div className="absolute left-0 mt-3 w-[calc(100vw-4rem)] sm:w-80 rounded-2xl border border-white/10 bg-gray-900/95 p-5 shadow-2xl backdrop-blur-xl z-40 ring-1 ring-white/20 animate-in fade-in zoom-in-95 duration-200">
+                      <div className="mb-4 flex items-center justify-between">
+                        <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                          <FaHeart className="text-red-400" size={12} />
+                          Saved Leads
+                        </h3>
+                        {wishlist.length > 0 && (
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setWishlist([]);
+                              localStorage.removeItem(MAPS_WISHLIST_KEY);
+                            }} 
+                            className="text-[10px] font-semibold text-gray-400 hover:text-red-400 transition-colors"
+                          >
+                            Clear All
+                          </button>
+                        )}
+                      </div>
+                      
+                      {wishlist.length === 0 ? (
+                        <div className="py-8 text-center">
+                          <p className="text-xs text-gray-500">No saved leads yet.</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3 max-h-[60vh] sm:max-h-80 overflow-y-auto pr-1 custom-scrollbar">
+                          {wishlist.map((item) => (
+                            <div key={item.id} className="rounded-xl border border-white/5 bg-white/5 p-3">
+                              <div className="flex justify-between items-start gap-2">
+                                <div className="min-w-0 flex-1">
+                                  <h4 className="text-xs font-bold text-white truncate">{item.name}</h4>
+                                  <p className="text-[10px] text-gray-400 truncate">{item.address}</p>
+                                </div>
+                                <button onClick={() => removeFromWishlist(item.id)} className="text-gray-500 hover:text-red-400 shrink-0">
+                                  <FaTrash size={12} />
+                                </button>
+                              </div>
+                              <div className="mt-3 flex gap-2">
+                                <button
+                                  onClick={() => handleCreateLead(item)}
+                                  disabled={creatingLeadId === item.id}
+                                  className="flex-1 rounded-lg bg-blue-600 py-1.5 text-[10px] font-medium text-white hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  {creatingLeadId === item.id ? "Adding..." : "Add Lead"}
+                                </button>
+                              </div>
+                            </div>
                           ))}
                         </div>
                       )}
@@ -702,6 +838,15 @@ export default function MapLeadSearch() {
                               <span className="truncate">{item.address || "No address provided"}</span>
                             </div>
                           </div>
+                          <button 
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                toggleWishlist(item);
+                            }}
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
+                          >
+                            {isInWishlist(item.id) ? <FaHeart className="text-red-500" size={16} /> : <FaRegHeart size={16} />}
+                          </button>
                         </div>
 
                         <div className="mt-6 flex flex-wrap gap-2">

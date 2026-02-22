@@ -1,5 +1,6 @@
 import cron from "node-cron";
 import Lead from "../models/Lead.js";
+import User from "../models/User.js";
 
 // Schedule tasks to be run on the server.
 export const setupCronJobs = () => {
@@ -26,6 +27,23 @@ export const setupCronJobs = () => {
 
     } catch (error) {
       console.error("Error in daily cron job:", error);
+    }
+  });
+
+  // Run on the 1st of every month at midnight to reset usage limits
+  cron.schedule("0 0 1 * *", async () => {
+    console.log("Running monthly cron job: Reset user usage limits");
+    try {
+      const result = await User.updateMany({}, {
+        $set: {
+          aiUsageCount: 0,
+          mapSearchCount: 0,
+          emailUsageCount: 0
+        }
+      });
+      console.log(`Reset monthly limits for ${result.modifiedCount} users.`);
+    } catch (error) {
+      console.error("Error in monthly cron job:", error);
     }
   });
 };

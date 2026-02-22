@@ -140,36 +140,71 @@ const trackOutreach = async (
   content: string
 ): Promise<void> => {
   try {
+    const { getLeadById } = await import('./leadService');
+    const lead = await getLeadById(leadId);
+    
     const now = new Date();
     const dateStr = now.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
     });
     
-    // Import getLeadById to fetch current notes
-    const { getLeadById } = await import('./leadService');
-    
-    // Get current lead to preserve existing notes
-    const currentLead = await getLeadById(leadId);
-    const existingNotes = currentLead.notes || '';
-    
-    // Create new note entry
     const newNote = `[${dateStr}] ${method === 'email' ? 'Email' : 'WhatsApp'} opened: ${content.substring(0, 50)}${content.length > 50 ? '...' : ''}`;
-    
-    // Append to existing notes
+    const existingNotes = lead.notes || '';
     const updatedNotes = existingNotes 
       ? `${existingNotes}\n${newNote}`
       : newNote;
     
-    // Update lead status to Contacted (don't await to avoid blocking)
     updateLeadStatus(leadId, 'Contacted').catch(console.error);
-    
-    // Update notes
-    await updateLead(leadId, {
-      notes: updatedNotes,
-    });
+    await updateLead(leadId, { notes: updatedNotes });
   } catch (error) {
     console.error('Error tracking outreach:', error);
-    // Don't show error to user - tracking is secondary
   }
 };
+
+export const generateEmailDraft = async (lead: Lead): Promise<{ subject: string; body: string }> => {
+  // Mock AI generation
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  return {
+    subject: `Quick question regarding ${lead.businessName}`,
+    body: `Hi ${lead.contactName || "Team"},\n\nI came across ${lead.businessName} and noticed some great potential for growth. I'd love to discuss how we can help you scale.\n\nBest regards,\n[Your Name]`
+  };
+};
+
+export const sendEmail = async (leadId: string, { subject, body }: { subject: string; body: string }) => {
+  const { getLeadById } = await import('./leadService');
+  const lead = await getLeadById(leadId);
+  
+  if (!lead.email) {
+    throw new Error("No email address available");
+  }
+  
+  const mailtoLink = `mailto:${lead.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.location.href = mailtoLink;
+  
+  await trackOutreach(leadId, 'email', subject);
+};
+
+export const generateWhatsAppDraft = async (lead: Lead): Promise<{ body: string }> => {
+  // Mock AI generation
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  return {
+    body: `Hi ${lead.contactName || "there"}, I saw ${lead.businessName} and wanted to connect. Are you open to a quick chat?`
+  };
+};
+
+export const sendWhatsApp = async (leadId: string, { body }: { body: string }) => {
+  const { getLeadById } = await import('./leadService');
+  const lead = await getLeadById(leadId);
+  
+  if (!lead.phone) {
+    throw new Error("No phone number available");
+  }
+  
+  const phone = formatPhoneForWhatsApp(lead.phone);
+  const whatsappLink = `https://wa.me/${phone}?text=${encodeURIComponent(body)}`;
+  window.open(whatsappLink, '_blank');
+  
+  await trackOutreach(leadId, 'whatsapp', body);
+};
+

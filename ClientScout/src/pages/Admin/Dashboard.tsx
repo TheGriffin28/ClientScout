@@ -8,6 +8,8 @@ import UserGrowthChart from "./UserGrowthChart";
 import LeadStatusChart from "./LeadStatusChart";
 import { CardSkeleton, ChartSkeleton } from "../../components/ui/Skeleton";
 import { GroupIcon, BoxIconLine, BoltIcon, UserCircleIcon } from "../../icons";
+import CardDataStats from "../../components/dashboard/CardDataStats";
+import { FaMoneyBillWave, FaShoppingCart, FaChartLine } from "react-icons/fa";
 
 const AdminDashboard: React.FC = () => {
   const [stats, setStats] = useState<UserStats | null>(null);
@@ -18,6 +20,12 @@ const AdminDashboard: React.FC = () => {
     series: [{ name: "AI Usage", data: [0, 0, 0, 0, 0, 0, 0] }],
     topUsers: []
   });
+  const [transactionStats, setTransactionStats] = useState<{
+    totalRevenue: number;
+    pendingCount: number;
+    todaySales: number;
+    totalTransactions: number;
+  } | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -26,10 +34,11 @@ const AdminDashboard: React.FC = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [statsData, aiUsageData, chartsResponse] = await Promise.all([
+      const [statsData, aiUsageData, chartsResponse, transactionsData] = await Promise.all([
         adminService.getStats(),
         adminService.getAIUsageData(),
-        adminService.getChartsData()
+        adminService.getChartsData(),
+        adminService.getTransactions(1, 1)
       ]);
       
       setStats(statsData);
@@ -38,6 +47,9 @@ const AdminDashboard: React.FC = () => {
       }
       if (chartsResponse) {
         setChartData(chartsResponse);
+      }
+      if (transactionsData && transactionsData.stats) {
+        setTransactionStats(transactionsData.stats);
       }
     } catch (error) {
       console.error("Failed to fetch admin stats:", error);
@@ -55,7 +67,7 @@ const AdminDashboard: React.FC = () => {
       />
       <PageBreadCrumb pageTitle="Admin Dashboard" />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4 mb-6">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5 mb-6">
         {loading ? (
           <>
             <CardSkeleton />
@@ -65,95 +77,107 @@ const AdminDashboard: React.FC = () => {
           </>
         ) : (
           <>
-            {/* Total Users */}
-            <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] md:p-6">
-              <div className="flex items-center justify-center w-12 h-12 bg-gray-100 rounded-xl dark:bg-gray-800">
-                <GroupIcon className="text-gray-800 size-6 dark:text-white/90" />
-              </div>
-              <div className="mt-5">
-                <span className="text-sm text-gray-500 dark:text-gray-400">Total Users</span>
-                <h4 className="mt-2 font-bold text-gray-800 text-title-sm dark:text-white/90">
-                  {stats?.totalUsers || 0}
-                </h4>
-              </div>
-            </div>
+            <CardDataStats 
+              title="Total Users" 
+              total={stats?.totalUsers.toString() || "0"} 
+              rate={`${stats?.activeUsers || 0} Active`} 
+              levelUp={true}
+            >
+              <GroupIcon className="fill-primary dark:fill-white" />
+            </CardDataStats>
 
-            {/* Active Users */}
-            <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] md:p-6">
-              <div className="flex items-center justify-center w-12 h-12 bg-green-100 rounded-xl dark:bg-green-500/10">
-                <UserCircleIcon className="text-green-600 size-6" />
-              </div>
-              <div className="mt-5">
-                <span className="text-sm text-gray-500 dark:text-gray-400">Active Users</span>
-                <h4 className="mt-2 font-bold text-green-600 text-title-sm">
-                  {stats?.activeUsers || 0}
-                </h4>
-              </div>
-            </div>
+            <CardDataStats 
+              title="Total Revenue" 
+              total={`$${transactionStats?.totalRevenue.toLocaleString() || "0"}`} 
+              rate="All Time" 
+              levelUp={true}
+            >
+              <FaMoneyBillWave className="text-primary dark:text-white text-xl" />
+            </CardDataStats>
 
-            {/* Total Leads */}
-            <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] md:p-6">
-              <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-xl dark:bg-blue-500/10">
-                <BoxIconLine className="text-blue-600 size-6" />
-              </div>
-              <div className="mt-5">
-                <span className="text-sm text-gray-500 dark:text-gray-400">Total Leads</span>
-                <h4 className="mt-2 font-bold text-blue-600 text-title-sm">
-                  {stats?.totalLeads || 0}
-                </h4>
-              </div>
-            </div>
+            <CardDataStats 
+              title="Total Leads" 
+              total={stats?.totalLeads.toString() || "0"} 
+              rate="System Wide" 
+              levelUp={true}
+            >
+              <BoxIconLine className="fill-primary dark:fill-white" />
+            </CardDataStats>
 
-            {/* AI Usage */}
-            <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] md:p-6">
-              <div className="flex items-center justify-center w-12 h-12 bg-purple-100 rounded-xl dark:bg-purple-500/10">
-                <BoltIcon className="text-purple-600 size-6" />
-              </div>
-              <div className="mt-5">
-                <span className="text-sm text-gray-500 dark:text-gray-400">AI Usage</span>
-                <h4 className="mt-2 font-bold text-purple-600 text-title-sm">
-                  {stats?.aiUsageCount || 0}
-                </h4>
-              </div>
-            </div>
+            <CardDataStats 
+              title="AI Usage" 
+              total={stats?.aiUsageCount.toString() || "0"} 
+              rate="Total Calls" 
+              levelUp={true}
+            >
+              <BoltIcon className="fill-primary dark:fill-white" />
+            </CardDataStats>
           </>
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 md:gap-6">
-        {/* AI Usage Chart */}
-        <div className="lg:col-span-8">
-          {loading ? (
-            <ChartSkeleton />
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5 mb-6">
+        {loading ? (
+            <>
+              <CardSkeleton />
+              <CardSkeleton />
+              <CardSkeleton />
+              <CardSkeleton />
+            </>
           ) : (
-            <UsageChart 
-              categories={chartData?.categories || usageData.categories} 
-              series={chartData ? [chartData.aiUsage] : usageData.series} 
-            />
+            <>
+               <CardDataStats 
+                title="Today's Sales" 
+                total={`$${transactionStats?.todaySales.toLocaleString() || "0"}`} 
+                rate="Today"
+                levelUp={true}
+              >
+                <FaChartLine className="text-primary dark:text-white text-xl" />
+              </CardDataStats>
+
+              <CardDataStats 
+                title="Pending Trans." 
+                total={transactionStats?.pendingCount.toString() || "0"} 
+                rate="Action Needed"
+                levelDown={transactionStats?.pendingCount ? transactionStats.pendingCount > 0 : false}
+              >
+                <FaShoppingCart className="text-primary dark:text-white text-xl" />
+              </CardDataStats>
+            </>
           )}
+      </div>
+
+      <div className="mt-4 grid grid-cols-12 gap-4 md:mt-6 md:gap-6 2xl:mt-7.5 2xl:gap-7.5">
+        <div className="col-span-12 xl:col-span-8">
+            {loading ? (
+                <ChartSkeleton />
+            ) : (
+                <UsageChart 
+                  categories={chartData?.categories || usageData.categories} 
+                  series={chartData ? [chartData.aiUsage] : usageData.series} 
+                />
+            )}
+        </div>
+        
+        <div className="col-span-12 xl:col-span-4">
+             {loading ? (
+                <ChartSkeleton />
+            ) : (
+                chartData && <LeadStatusChart data={chartData.leadDistribution} />
+            )}
         </div>
 
-        {/* Lead Distribution Chart */}
-        <div className="lg:col-span-4">
-          {loading ? (
-            <ChartSkeleton />
-          ) : (
-            chartData && <LeadStatusChart data={chartData.leadDistribution} />
-          )}
-        </div>
-
-        {/* User Growth Chart */}
-        <div className="lg:col-span-12">
-          {loading ? (
-            <ChartSkeleton />
-          ) : (
-            chartData && (
-              <UserGrowthChart 
-                categories={chartData.categories} 
-                data={chartData.userGrowth.data} 
-              />
-            )
-          )}
+        <div className="col-span-12">
+            {loading ? (
+                <ChartSkeleton />
+            ) : (
+                chartData && (
+                  <UserGrowthChart 
+                      categories={chartData.categories} 
+                      data={chartData.userGrowth.data} 
+                  />
+                )
+            )}
         </div>
       </div>
     </>

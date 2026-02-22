@@ -107,6 +107,13 @@ export const getAllUsers = async (req, res) => {
   try {
     const users = await User.find({}).select("-password").sort({ createdAt: -1 });
     
+    const today = new Date();
+    const isOldUsage = (lastDate) => {
+      if (!lastDate) return false;
+      const date = new Date(lastDate);
+      return date.getMonth() !== today.getMonth() || date.getFullYear() !== today.getFullYear();
+    };
+
     // Transform to match frontend AdminUser interface if needed
     const formattedUsers = users.map(user => ({
       id: user._id,
@@ -115,14 +122,19 @@ export const getAllUsers = async (req, res) => {
       role: user.role,
       isActive: user.isActive,
       createdAt: user.createdAt,
-      aiUsageCount: user.aiUsageCount || 0,
+      aiUsageCount: (user.aiUsageCount > 0 && isOldUsage(user.lastAIUsedAt)) ? 0 : (user.aiUsageCount || 0),
       lastLoginAt: user.lastLoginAt,
       lastAIUsedAt: user.lastAIUsedAt,
-      maxDailyEmailsPerUser: user.maxDailyEmailsPerUser,
-      maxDailyAICallsPerUser: user.maxDailyAICallsPerUser,
-      mapSearchCount: user.mapSearchCount || 0,
+      maxMonthlyEmailsPerUser: user.maxMonthlyEmailsPerUser,
+      maxMonthlyAICallsPerUser: user.maxMonthlyAICallsPerUser,
+      mapSearchCount: (user.mapSearchCount > 0 && isOldUsage(user.lastMapSearchAt)) ? 0 : (user.mapSearchCount || 0),
       lastMapSearchAt: user.lastMapSearchAt,
-      maxDailyMapSearchesPerUser: user.maxDailyMapSearchesPerUser
+      maxMonthlyMapSearchesPerUser: user.maxMonthlyMapSearchesPerUser,
+      emailUsageCount: (user.emailUsageCount > 0 && isOldUsage(user.lastEmailSentAt)) ? 0 : (user.emailUsageCount || 0),
+      lastEmailSentAt: user.lastEmailSentAt,
+      extraEmailCredits: user.extraEmailCredits,
+      extraAICallsCredits: user.extraAICallsCredits,
+      extraMapSearchCredits: user.extraMapSearchCredits
     }));
 
     res.json(formattedUsers);
@@ -188,22 +200,28 @@ export const updateUserRole = async (req, res) => {
 export const updateUserLimits = async (req, res) => {
   try {
     const { id } = req.params;
-    const { maxDailyEmailsPerUser, maxDailyAICallsPerUser, maxDailyMapSearchesPerUser } = req.body;
+    const { 
+      maxMonthlyEmailsPerUser, 
+      maxMonthlyAICallsPerUser, 
+      maxMonthlyMapSearchesPerUser,
+      extraEmailCredits,
+      extraAICallsCredits,
+      extraMapSearchCredits
+    } = req.body;
 
     const user = await User.findById(id);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    if (maxDailyEmailsPerUser !== undefined) {
-      user.maxDailyEmailsPerUser = maxDailyEmailsPerUser;
-    }
-    if (maxDailyAICallsPerUser !== undefined) {
-      user.maxDailyAICallsPerUser = maxDailyAICallsPerUser;
-    }
-    if (maxDailyMapSearchesPerUser !== undefined) {
-      user.maxDailyMapSearchesPerUser = maxDailyMapSearchesPerUser;
-    }
+    if (maxMonthlyEmailsPerUser !== undefined) user.maxMonthlyEmailsPerUser = maxMonthlyEmailsPerUser;
+    if (maxMonthlyAICallsPerUser !== undefined) user.maxMonthlyAICallsPerUser = maxMonthlyAICallsPerUser;
+    if (maxMonthlyMapSearchesPerUser !== undefined) user.maxMonthlyMapSearchesPerUser = maxMonthlyMapSearchesPerUser;
+    
+    if (extraEmailCredits !== undefined) user.extraEmailCredits = extraEmailCredits;
+    if (extraAICallsCredits !== undefined) user.extraAICallsCredits = extraAICallsCredits;
+    if (extraMapSearchCredits !== undefined) user.extraMapSearchCredits = extraMapSearchCredits;
+
     await user.save();
 
     // Log user limits change
@@ -213,9 +231,12 @@ export const updateUserLimits = async (req, res) => {
       adminId: req.user._id,
       details: { 
         email: user.email, 
-        maxDailyEmailsPerUser, 
-        maxDailyAICallsPerUser,
-        maxDailyMapSearchesPerUser
+        maxMonthlyEmailsPerUser, 
+        maxMonthlyAICallsPerUser,
+        maxMonthlyMapSearchesPerUser,
+        extraEmailCredits,
+        extraAICallsCredits,
+        extraMapSearchCredits
       }
     });
 
@@ -229,22 +250,29 @@ export const updateUserLimits = async (req, res) => {
 /* ⚙️ CONFIGURATION / FEATURE FLAGS */
 export const getConfigs = async (req, res) => {
   try {
-    const configs = await Config.find({});
+    let configs = await Config.find({});
     
-    // Seed default configs if none exist
-    if (configs.length === 0) {
-      const defaults = [
-        { key: "enableAIEnrichment", value: true, description: "Enable AI-powered lead enrichment", category: "features" },
-        { key: "enableWhatsAppDrafts", value: true, description: "Enable WhatsApp message drafting", category: "features" },
-        { key: "maxDailyAICallsPerUser", value: 50, description: "Max AI calls per user per day", category: "limits" }
-      ];
+    // Default configs to ensure they exist
+    const defaults = [
+      { key: "enableAIEnrichment", value: true, description: "Enable AI-powered lead enrichment", category: "features" },
+      { key: "enableWhatsAppDrafts", value: true, description: "Enable WhatsApp message drafting", category: "features" },
+      { key: "maxMonthlyAICallsPerUser", value: 100, description: "Max AI calls per user per month", category: "limits" },
+      { key: "maxMonthlyEmailsPerUser", value: 100, description: "Max emails per user per month", category: "limits" },
+      { key: "maxMonthlyMapSearchesPerUser", value: 100, description: "Max Google Maps searches per user per month", category: "limits" },
+      { key: "upiQRCode", value: "", description: "UPI Payment QR Code Image Path", category: "payment" },
+      { key: "upiId", value: "", description: "UPI ID (VPA) for dynamic QR codes", category: "payment" }
+    ];
+
+    // Check for missing configs and insert them
+    const missingConfigs = defaults.filter(def => !configs.find(c => c.key === def.key));
+    
+    if (missingConfigs.length > 0) {
       try {
-        const created = await Config.insertMany(defaults);
-        return res.json(created);
+        await Config.insertMany(missingConfigs);
+        // Re-fetch to get the complete list with _id and timestamps
+        configs = await Config.find({});
       } catch (insertError) {
-        console.error("Failed to seed configs:", insertError);
-        // Fallback: return empty array or try to proceed
-        return res.json([]);
+        console.error("Failed to seed missing configs:", insertError);
       }
     }
     
@@ -282,6 +310,170 @@ export const updateConfig = async (req, res) => {
   } catch (error) {
     console.error("Error updating config:", error);
     res.status(500).json({ message: error.message });
+  }
+};
+
+export const uploadQRCode = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "Please upload a file" });
+    }
+
+    const qrCodePath = `/uploads/${req.file.filename}`;
+    
+    await Config.findOneAndUpdate(
+      { key: "upiQRCode" },
+      { 
+        value: qrCodePath, 
+        description: "UPI Payment QR Code Image Path", 
+        category: "payment" 
+      },
+      { upsert: true, new: true }
+    );
+
+    res.json({ 
+      message: "QR Code uploaded successfully", 
+      path: qrCodePath 
+    });
+  } catch (error) {
+    console.error("Error uploading QR code:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+import Transaction from "../models/Transaction.js";
+
+export const getTransactions = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+    
+    const { search, status } = req.query;
+    
+    let query = {};
+    if (status && status !== "all") {
+      query.status = status;
+    }
+
+    if (search) {
+      // Find users matching the search term first
+      const users = await User.find({
+        $or: [
+          { name: { $regex: search, $options: "i" } },
+          { email: { $regex: search, $options: "i" } }
+        ]
+      }).select("_id");
+      
+      const userIds = users.map(u => u._id);
+      
+      query.$or = [
+        { transactionId: { $regex: search, $options: "i" } },
+        { user: { $in: userIds } }
+      ];
+    }
+
+    const total = await Transaction.countDocuments(query);
+    const transactions = await Transaction.find(query)
+      .populate("user", "name email")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    // Calculate Stats efficiently
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const statsResult = await Transaction.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { 
+            $sum: { $cond: [{ $eq: ["$status", "completed"] }, "$amount", 0] } 
+          },
+          pendingCount: { 
+            $sum: { $cond: [{ $eq: ["$status", "pending"] }, 1, 0] } 
+          },
+          todaySales: {
+            $sum: { 
+              $cond: [
+                { 
+                  $and: [
+                    { $eq: ["$status", "completed"] },
+                    { $gte: ["$createdAt", startOfDay] }
+                  ] 
+                }, 
+                "$amount", 
+                0
+              ] 
+            }
+          },
+          totalTransactions: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const stats = statsResult[0] || {
+      totalRevenue: 0,
+      pendingCount: 0,
+      todaySales: 0,
+      totalTransactions: 0
+    };
+
+    res.json({
+      transactions,
+      page,
+      pages: Math.ceil(total / limit),
+      total,
+      stats
+    });
+  } catch (error) {
+    console.error("Error fetching transactions:", error);
+    res.status(500).json({ message: "Error fetching transactions" });
+  }
+};
+
+export const updateTransactionStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!["completed", "failed"].includes(status)) {
+      return res.status(400).json({ message: "Invalid status" });
+    }
+
+    const transaction = await Transaction.findById(id).populate("user");
+    if (!transaction) {
+      return res.status(404).json({ message: "Transaction not found" });
+    }
+
+    if (transaction.status === "completed") {
+      return res.status(400).json({ message: "Transaction already completed" });
+    }
+
+    transaction.status = status;
+    await transaction.save();
+
+    if (status === "completed") {
+      const user = transaction.user;
+      const credits = transaction.credits;
+      const type = transaction.type;
+
+      if (type === "email") {
+        user.extraEmailCredits = (user.extraEmailCredits || 0) + credits;
+      } else if (type === "ai") {
+        user.extraAICallsCredits = (user.extraAICallsCredits || 0) + credits;
+      } else if (type === "map") {
+        user.extraMapSearchCredits = (user.extraMapSearchCredits || 0) + credits;
+      }
+      
+      await user.save();
+    }
+
+    res.json(transaction);
+  } catch (error) {
+    console.error("Error updating transaction:", error);
+    res.status(500).json({ message: "Error updating transaction" });
   }
 };
 

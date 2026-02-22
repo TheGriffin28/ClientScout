@@ -4,10 +4,88 @@ import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import User from "../models/User.js";
 import jwt from "jsonwebtoken";
+import Config from "../models/Config.js";
 import { logAdminAction } from "../utils/logger.js";
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+};
+
+const formatUserResponse = async (user, includeToken = null) => {
+  // Check and reset monthly usage if needed
+  const today = new Date();
+  let usageChanged = false;
+  
+  const isOldUsage = (lastDate) => {
+    if (!lastDate) return false;
+    const date = new Date(lastDate);
+    return date.getMonth() !== today.getMonth() || date.getFullYear() !== today.getFullYear();
+  };
+
+  if (user.aiUsageCount > 0 && isOldUsage(user.lastAIUsedAt)) {
+    user.aiUsageCount = 0;
+    usageChanged = true;
+  }
+  
+  if (user.mapSearchCount > 0 && isOldUsage(user.lastMapSearchAt)) {
+    user.mapSearchCount = 0;
+    usageChanged = true;
+  }
+  
+  if (user.emailUsageCount > 0 && isOldUsage(user.lastEmailSentAt)) {
+    user.emailUsageCount = 0;
+    usageChanged = true;
+  }
+  
+  if (usageChanged) {
+    await user.save();
+  }
+
+  // Fetch global configs for limits
+  const configs = await Config.find({ category: 'limits' });
+  const getConfigValue = (key, defaultVal) => {
+    const cfg = configs.find(c => c.key === key);
+    return cfg && typeof cfg.value === 'number' ? cfg.value : defaultVal;
+  };
+
+  const response = {
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    mobileNumber: user.mobileNumber,
+    role: user.role,
+    isActive: user.isActive,
+    isVerified: user.isVerified,
+    twoFactorEnabled: user.twoFactorEnabled,
+    
+    // Usage Stats
+    aiUsageCount: user.aiUsageCount,
+    lastAIUsedAt: user.lastAIUsedAt,
+    maxMonthlyAICallsPerUser: typeof user.maxMonthlyAICallsPerUser === 'number' ? user.maxMonthlyAICallsPerUser : getConfigValue('maxMonthlyAICallsPerUser', 100),
+    extraAICallsCredits: user.extraAICallsCredits,
+    
+    mapSearchCount: user.mapSearchCount,
+    lastMapSearchAt: user.lastMapSearchAt,
+    maxMonthlyMapSearchesPerUser: typeof user.maxMonthlyMapSearchesPerUser === 'number' ? user.maxMonthlyMapSearchesPerUser : getConfigValue('maxMonthlyMapSearchesPerUser', 100),
+    extraMapSearchCredits: user.extraMapSearchCredits,
+    
+    emailUsageCount: user.emailUsageCount,
+    lastEmailSentAt: user.lastEmailSentAt,
+    maxMonthlyEmailsPerUser: typeof user.maxMonthlyEmailsPerUser === 'number' ? user.maxMonthlyEmailsPerUser : getConfigValue('maxMonthlyEmailsPerUser', 100),
+    extraEmailCredits: user.extraEmailCredits,
+    
+    lastLoginAt: user.lastLoginAt,
+    bio: user.bio,
+    location: user.location,
+    socialLinks: user.socialLinks,
+    address: user.address,
+  };
+
+  if (includeToken) {
+    response.token = includeToken;
+  }
+
+  return response;
 };
 
 export const registerUser = async (req, res) => {
@@ -103,21 +181,10 @@ export const verifyUserEmail = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
+    const response = await formatUserResponse(user, token);
     res.status(200).json({
       message: "Email verified successfully. You are now logged in.",
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      mobileNumber: user.mobileNumber,
-      role: user.role,
-      isActive: user.isActive,
-      isVerified: user.isVerified,
-      aiUsageCount: user.aiUsageCount,
-      lastAIUsedAt: user.lastAIUsedAt,
-      mapSearchCount: user.mapSearchCount,
-      lastMapSearchAt: user.lastMapSearchAt,
-      maxDailyMapSearchesPerUser: user.maxDailyMapSearchesPerUser,
-      token
+      ...response
     });
   } catch (error) {
     console.error("Error verifying email:", error);
@@ -190,20 +257,10 @@ export const loginUser = async (req, res) => {
     maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
   });
 
+  const response = await formatUserResponse(user, token);
   res.status(200).json({
-    id: user._id,
-    name: user.name,
-    email: user.email,
-    mobileNumber: user.mobileNumber,
-    role: user.role,
-    isActive: user.isActive,
-    isVerified: user.isVerified,
-    aiUsageCount: user.aiUsageCount,
-    lastAIUsedAt: user.lastAIUsedAt,
-    mapSearchCount: user.mapSearchCount,
-    lastMapSearchAt: user.lastMapSearchAt,
-    maxDailyMapSearchesPerUser: user.maxDailyMapSearchesPerUser,
-    token // Include the token in the response
+    message: "Login successful",
+    ...response
   });
 };
 
@@ -240,22 +297,10 @@ export const verifyTwoFactor = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
+    const response = await formatUserResponse(user, token);
     res.status(200).json({
       message: "Two-factor authentication successful. You are now logged in.",
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      mobileNumber: user.mobileNumber,
-      role: user.role,
-      isActive: user.isActive,
-      isVerified: user.isVerified,
-      twoFactorEnabled: user.twoFactorEnabled,
-      aiUsageCount: user.aiUsageCount,
-      lastAIUsedAt: user.lastAIUsedAt,
-      mapSearchCount: user.mapSearchCount,
-      lastMapSearchAt: user.lastMapSearchAt,
-      maxDailyMapSearchesPerUser: user.maxDailyMapSearchesPerUser,
-      token
+      ...response
     });
   } catch (error) {
     console.error("Error verifying two-factor authentication:", error);
@@ -264,27 +309,8 @@ export const verifyTwoFactor = async (req, res) => {
 };
 
 export const getMe = async (req, res) => {
-  const user = {
-    id: req.user._id,
-    name: req.user.name,
-    email: req.user.email,
-    mobileNumber: req.user.mobileNumber,
-    role: req.user.role,
-    isActive: req.user.isActive,
-    aiUsageCount: req.user.aiUsageCount,
-    lastAIUsedAt: req.user.lastAIUsedAt,
-    lastLoginAt: req.user.lastLoginAt,
-    mapSearchCount: req.user.mapSearchCount,
-    lastMapSearchAt: req.user.lastMapSearchAt,
-    maxDailyMapSearchesPerUser: req.user.maxDailyMapSearchesPerUser,
-    isVerified: req.user.isVerified,
-    twoFactorEnabled: req.user.twoFactorEnabled,
-    bio: req.user.bio,
-    location: req.user.location,
-    socialLinks: req.user.socialLinks,
-    address: req.user.address,
-  };
-  res.status(200).json(user);
+  const response = await formatUserResponse(req.user);
+  res.status(200).json(response);
 };
 
 export const updateProfile = async (req, res) => {
@@ -317,25 +343,8 @@ export const updateProfile = async (req, res) => {
 
 
       const updatedUser = await user.save();
-
-      res.status(200).json({
-        id: updatedUser._id,
-        name: updatedUser.name,
-        email: updatedUser.email,
-        mobileNumber: updatedUser.mobileNumber,
-        role: updatedUser.role,
-        isActive: updatedUser.isActive,
-        aiUsageCount: updatedUser.aiUsageCount,
-        lastAIUsedAt: updatedUser.lastAIUsedAt,
-        lastLoginAt: updatedUser.lastLoginAt,
-        mapSearchCount: updatedUser.mapSearchCount,
-        lastMapSearchAt: updatedUser.lastMapSearchAt,
-        maxDailyMapSearchesPerUser: updatedUser.maxDailyMapSearchesPerUser,
-        bio: updatedUser.bio,
-        location: updatedUser.location,
-        socialLinks: updatedUser.socialLinks,
-        address: updatedUser.address,
-      });
+      const response = await formatUserResponse(updatedUser);
+      res.status(200).json(response);
     } else {
       res.status(404).json({ message: "User not found" });
     }

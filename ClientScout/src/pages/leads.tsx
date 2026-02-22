@@ -1,1159 +1,495 @@
-import { useState, useEffect, useRef } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useState, useEffect, useCallback } from "react";
+import { useSearchParams, Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import { getLeads, createLead, updateLead, deleteLead, Lead, LeadFormData } from "../services/leadService";
 import StatusBadge from "../components/common/StatusBadge";
-import flatpickr from "flatpickr";
-import "flatpickr/dist/flatpickr.css";
-import { CalenderIcon } from "../icons";
-import { FaEnvelope, FaWhatsapp, FaPhoneAlt, FaEllipsisV, FaEye, FaEdit, FaTrash, FaMagic, FaSync, FaRegPaperPlane } from "react-icons/fa";
-import { openWhatsApp, openCall } from "../services/outreachService";
-import { generateEmailDraft, generateWhatsAppDraft, sendLeadEmail } from "../services/leadService";
-import { Modal } from "../components/ui/modal";
+import {
+  FaSearch,
+  FaPlus,
+  FaPhoneAlt,
+  FaEnvelope,
+  FaWhatsapp,
+  FaTrash,
+  FaEdit
+} from "react-icons/fa";
+import { openCall } from "../services/outreachService";
 import { TableSkeleton } from "../components/ui/Skeleton";
+import AddEditLeadModal from "../components/leads/AddEditLeadModal";
+import EmailDraftModal from "../components/leads/EmailDraftModal";
+import WhatsAppDraftModal from "../components/leads/WhatsAppDraftModal";
 
 const Leads = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
-  const [open, setOpen] = useState(false);
-  const [editingLead, setEditingLead] = useState<Lead | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [openActionId, setOpenActionId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchQuery = searchParams.get("search") || "";
   
-  // Modal & Draft state
-  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
-  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
-  const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
-  
-  const [generatingEmail, setGeneratingEmail] = useState(false);
-  const [sendingEmail, setSendingEmail] = useState(false);
-  const [generatingWhatsApp, setGeneratingWhatsApp] = useState(false);
-
-  const [isEditingEmail, setIsEditingEmail] = useState(false);
-  const [editedEmailSubject, setEditedEmailSubject] = useState("");
-  const [editedEmailBody, setEditedEmailBody] = useState("");
-
-  const [isEditingWhatsApp, setIsEditingWhatsApp] = useState(false);
-  const [editedWhatsAppBody, setEditedWhatsAppBody] = useState("");
-  
-  // Pagination state
+  // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalLeads, setTotalLeads] = useState(0);
-  const [limit] = useState(10);
 
-  const [formData, setFormData] = useState<LeadFormData>({
-    businessName: "",
-    contactName: "",
-    email: "",
-    phone: "",
-    website: "",
-    source: "Manual",
-    status: "New",
-    notes: "",
-    nextFollowUp: "",
-  });
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const searchQuery = searchParams.get("search") || "";
+  // Selection
+  const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
+
+  // Modals
+  const [isAddEditOpen, setIsAddEditOpen] = useState(false);
+  const [editingLead, setEditingLead] = useState<Lead | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const datePickerRef = useRef<HTMLInputElement>(null);
-  const flatpickrInstance = useRef<flatpickr.Instance | null>(null);
-  const initialDateRef = useRef<string>("");
-  const actionMenuRef = useRef<HTMLDivElement>(null);
+  const [outreachLead, setOutreachLead] = useState<Lead | null>(null);
+  const [isEmailOpen, setIsEmailOpen] = useState(false);
+  const [isWhatsAppOpen, setIsWhatsAppOpen] = useState(false);
 
-  useEffect(() => {
-    fetchLeads(currentPage, searchQuery);
-  }, [currentPage, searchQuery]);
+  // Search Debounce
+  const [searchInput, setSearchInput] = useState(searchQuery);
 
-  // Click outside listener for action menu
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (actionMenuRef.current && !actionMenuRef.current.contains(event.target as Node)) {
-        setOpenActionId(null);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  // Initialize date picker when modal opens (only once when open becomes true)
-  useEffect(() => {
-    if (open && datePickerRef.current) {
-      // Small delay to ensure formData is set when editing
-      const timer = setTimeout(() => {
-        const inputElement = datePickerRef.current;
-        if (!inputElement) return;
-
-        // Destroy existing instance if any
-        if (flatpickrInstance.current && !Array.isArray(flatpickrInstance.current)) {
-          flatpickrInstance.current.destroy();
-          flatpickrInstance.current = null;
-        }
-
-        // Use the ref value which was set in handleOpen
-        const initialDate = initialDateRef.current || undefined;
-        
-        flatpickrInstance.current = flatpickr(inputElement, {
-          dateFormat: "Y-m-d",
-          defaultDate: initialDate,
-          minDate: "today",
-          allowInput: false,
-          onChange: (_selectedDates, dateStr) => {
-            // Use functional update to avoid stale closure
-            setFormData((prev) => ({
-              ...prev,
-              nextFollowUp: dateStr || "",
-            }));
-          },
-        });
-      }, 50);
-
-      return () => {
-        clearTimeout(timer);
-        if (flatpickrInstance.current && !Array.isArray(flatpickrInstance.current)) {
-          flatpickrInstance.current.destroy();
-          flatpickrInstance.current = null;
-        }
-      };
-    }
-  }, [open]); // Only depend on open, not formData to prevent re-initialization
-
-  const fetchLeads = async (page = 1, search = "") => {
+  const fetchLeads = useCallback(async (page: number, search: string) => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const data = await getLeads(page, limit, search);
-      
-      // Defensive check for data structure
-      if (data && "leads" in data) {
-        setLeads(data.leads || []);
-        setTotalPages(data.totalPages || 1);
-        setTotalLeads(data.totalLeads || 0);
-        setCurrentPage(data.currentPage || page);
-      } else if (Array.isArray(data)) {
-        // Fallback if API returns old array format
-        setLeads(data);
-        setTotalPages(1);
-        setTotalLeads(data.length);
-        setCurrentPage(1);
+      const data: any = await getLeads(page, 10, search);
+      if (data.leads) {
+        setLeads(data.leads);
+        setTotalPages(data.totalPages);
+        setTotalLeads(data.totalLeads);
       } else {
         setLeads([]);
       }
     } catch (error) {
-      console.error("Error fetching leads:", error);
-      setLeads([]); // Ensure leads is never undefined
+      console.error("Failed to fetch leads", error);
+      toast.error("Failed to load leads");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const handleOpen = (lead: Lead | null = null) => {
-    if (lead) {
-      const nextFollowUp = lead.nextFollowUp ? new Date(lead.nextFollowUp).toISOString().split('T')[0] : "";
-      initialDateRef.current = nextFollowUp;
-      setEditingLead(lead);
-      setFormData({
-        businessName: lead.businessName || "",
-        contactName: lead.contactName || "",
-        email: lead.email || "",
-        phone: lead.phone || "",
-        website: lead.website || "",
-        source: lead.source || "Manual",
-        status: lead.status || "New",
-        notes: lead.notes || "",
-        nextFollowUp: nextFollowUp,
-      });
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      if (searchInput !== searchQuery) {
+        setSearchParams({ search: searchInput });
+        setCurrentPage(1);
+      }
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [searchInput, setSearchParams, searchQuery]);
+
+  useEffect(() => {
+    fetchLeads(currentPage, searchQuery);
+  }, [currentPage, searchQuery, fetchLeads]);
+
+  // Bulk Selection Logic
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedLeadIds(leads.map(l => l._id));
     } else {
-      initialDateRef.current = "";
-      setEditingLead(null);
-      setFormData({
-        businessName: "",
-        contactName: "",
-        email: "",
-        phone: "",
-        website: "",
-        source: "Manual",
-        status: "New",
-        notes: "",
-        nextFollowUp: "",
-      });
+      setSelectedLeadIds([]);
     }
-    setOpen(true);
   };
 
-  const handleClose = () => {
-    // Clean up date picker
-    if (flatpickrInstance.current && !Array.isArray(flatpickrInstance.current)) {
-      flatpickrInstance.current.destroy();
-      flatpickrInstance.current = null;
-    }
-    
-    setOpen(false);
-    setEditingLead(null);
-    setErrors({});
-    setSubmitting(false);
-    
-    // Reset form data after a small delay to prevent form reset during date selection
-    setTimeout(() => {
-      setFormData({
-        businessName: "",
-        contactName: "",
-        email: "",
-        phone: "",
-        website: "",
-        source: "Manual",
-        status: "New",
-        notes: "",
-        nextFollowUp: "",
-      });
-    }, 100);
+  const handleSelectLead = (id: string) => {
+    setSelectedLeadIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
   };
 
-  const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.businessName.trim()) {
-      newErrors.businessName = "Business name is required";
-    }
-
-    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = "Please enter a valid email address";
-    }
-
-    if (formData.website && !/^https?:\/\/.+/.test(formData.website) && formData.website.trim() !== "") {
-      // Allow empty or auto-format URLs
-      if (formData.website.trim() !== "") {
-        newErrors.website = "Please enter a valid URL (starting with http:// or https://)";
-      }
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleBulkDelete = async () => {
+    if (!window.confirm(`Are you sure you want to delete ${selectedLeadIds.length} leads?`)) return;
     
-    if (!validateForm()) {
-      return;
-    }
-
-    setSubmitting(true);
+    const toastId = toast.loading("Deleting leads...");
     try {
-      let submitData: LeadFormData = {
-        ...formData,
-        businessName: formData.businessName.trim(),
-        contactName: formData.contactName?.trim() || undefined,
-        email: formData.email?.trim() || undefined,
-        phone: formData.phone?.trim() || undefined,
-        website: formData.website?.trim() || undefined,
-        source: formData.source || "Manual",
-        notes: formData.notes?.trim() || undefined,
-        nextFollowUp: formData.nextFollowUp?.trim() || "",
-      };
+      await Promise.all(selectedLeadIds.map(id => deleteLead(id)));
+      toast.success("Leads deleted successfully", { id: toastId });
+      setSelectedLeadIds([]);
+      fetchLeads(currentPage, searchQuery);
+    } catch (error) {
+      toast.error("Failed to delete leads", { id: toastId });
+    }
+  };
 
-      // Auto-format website URL if provided
-      if (submitData.website && !submitData.website.startsWith('http')) {
-        submitData.website = `https://${submitData.website}`;
-      }
-
+  // CRUD Handlers
+  const handleAddEditSubmit = async (data: LeadFormData) => {
+    setIsSubmitting(true);
+    try {
       if (editingLead) {
-        await updateLead(editingLead._id, submitData);
-        toast.success("Lead updated successfully!");
+        await updateLead(editingLead._id, data);
+        toast.success("Lead updated successfully");
       } else {
-        await createLead(submitData);
-        toast.success("Lead created successfully!");
+        await createLead(data);
+        toast.success("Lead created successfully");
       }
-      await fetchLeads(currentPage);
-      handleClose();
-    } catch (error: any) {
-      console.error("Error saving lead:", error);
-      const errorMessage = error?.response?.data?.message || "Error saving lead. Please try again.";
-      toast.error(errorMessage);
+      setIsAddEditOpen(false);
+      setEditingLead(null);
+      fetchLeads(currentPage, searchQuery);
+    } catch (error) {
+      console.error(error);
+      toast.error("Operation failed");
     } finally {
-      setSubmitting(false);
+      setIsSubmitting(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this lead?")) {
-      return;
-    }
+    if (!window.confirm("Are you sure you want to delete this lead?")) return;
     try {
       await deleteLead(id);
-      toast.success("Lead deleted successfully!");
-      await fetchLeads(currentPage);
-    } catch (error) {
-      console.error("Error deleting lead:", error);
-      toast.error("Error deleting lead. Please try again.");
-    }
-  };
-
-  const handlePageChange = (newPage: number) => {
-    if (newPage >= 1 && newPage <= totalPages) {
-      setCurrentPage(newPage);
-      setOpenActionId(null);
-    }
-  };
-
-  // Outreach Handlers
-  const handleOpenEmailModal = (lead: Lead) => {
-    setSelectedLead(lead);
-    if (lead.emailDraft) {
-      setEditedEmailSubject(lead.emailDraft.subject);
-      setEditedEmailBody(lead.emailDraft.body);
-    }
-    setIsEmailModalOpen(true);
-    setIsEditingEmail(false);
-  };
-
-  const handleOpenWhatsAppModal = (lead: Lead) => {
-    setSelectedLead(lead);
-    if (lead.whatsappDraft) {
-      setEditedWhatsAppBody(lead.whatsappDraft.body);
-    }
-    setIsWhatsAppModalOpen(true);
-    setIsEditingWhatsApp(false);
-  };
-
-  const handleGenerateEmail = async () => {
-    if (!selectedLead) return;
-    try {
-      setGeneratingEmail(true);
-      const updatedLead = await generateEmailDraft(selectedLead._id);
-      setSelectedLead(updatedLead);
-      setLeads(prev => prev.map(l => l._id === updatedLead._id ? updatedLead : l));
-      setEditedEmailSubject(updatedLead.emailDraft?.subject || "");
-      setEditedEmailBody(updatedLead.emailDraft?.body || "");
-      toast.success("Email draft generated!");
-    } catch (error) {
-      console.error("Error generating email:", error);
-      toast.error("Error generating email draft.");
-    } finally {
-      setGeneratingEmail(false);
-    }
-  };
-
-  const handleSendEmail = async () => {
-    if (!selectedLead || !selectedLead.emailDraft) return;
-    
-    try {
-      setSendingEmail(true);
-      await sendLeadEmail(selectedLead._id, editedEmailSubject || selectedLead.emailDraft.subject, editedEmailBody || selectedLead.emailDraft.body);
-      toast.success("Email sent successfully!");
-      setIsEmailModalOpen(false);
-      // Refresh leads to update contact history
+      toast.success("Lead deleted");
       fetchLeads(currentPage, searchQuery);
-    } catch (error: any) {
-      console.error("Error sending email:", error);
-      toast.error(error.response?.data?.message || "Failed to send email.");
-    } finally {
-      setSendingEmail(false);
-    }
-  };
-
-  const handleGenerateWhatsApp = async () => {
-    if (!selectedLead) return;
-    try {
-      setGeneratingWhatsApp(true);
-      const updatedLead = await generateWhatsAppDraft(selectedLead._id);
-      setSelectedLead(updatedLead);
-      setLeads(prev => prev.map(l => l._id === updatedLead._id ? updatedLead : l));
-      setEditedWhatsAppBody(updatedLead.whatsappDraft?.body || "");
-      toast.success("WhatsApp draft generated!");
     } catch (error) {
-      console.error("Error generating WhatsApp:", error);
-      toast.error("Error generating WhatsApp draft.");
-    } finally {
-      setGeneratingWhatsApp(false);
-    }
-  };
-
-  const handleSendWhatsApp = () => {
-    if (!selectedLead) return;
-    openWhatsApp({ lead: selectedLead, customMessage: editedWhatsAppBody || selectedLead.whatsappDraft?.body });
-    setIsWhatsAppModalOpen(false);
-  };
-
-  const handleEditEmail = () => {
-    if (selectedLead?.emailDraft) {
-      setEditedEmailSubject(editedEmailSubject || selectedLead.emailDraft.subject);
-      setEditedEmailBody(editedEmailBody || selectedLead.emailDraft.body);
-      setIsEditingEmail(true);
-    }
-  };
-
-  const handleSaveEmailDraft = async () => {
-    if (!selectedLead) return;
-    try {
-      const updatedLead = await updateLead(selectedLead._id, {
-        emailDraft: {
-          subject: editedEmailSubject,
-          body: editedEmailBody,
-        },
-      });
-      setSelectedLead(updatedLead);
-      setLeads(prev => prev.map(l => l._id === updatedLead._id ? updatedLead : l));
-      setIsEditingEmail(false);
-      toast.success("Email draft updated!");
-    } catch (error) {
-      console.error("Error updating email draft:", error);
-      toast.error("Failed to update email draft.");
-    }
-  };
-
-  const handleEditWhatsApp = () => {
-    if (selectedLead?.whatsappDraft) {
-      setEditedWhatsAppBody(editedWhatsAppBody || selectedLead.whatsappDraft.body);
-      setIsEditingWhatsApp(true);
-    }
-  };
-
-  const handleSaveWhatsAppDraft = async () => {
-    if (!selectedLead) return;
-    try {
-      const updatedLead = await updateLead(selectedLead._id, {
-        whatsappDraft: {
-          body: editedWhatsAppBody,
-        },
-      });
-      setSelectedLead(updatedLead);
-      setLeads(prev => prev.map(l => l._id === updatedLead._id ? updatedLead : l));
-      setIsEditingWhatsApp(false);
-      toast.success("WhatsApp draft updated!");
-    } catch (error) {
-      console.error("Error updating WhatsApp draft:", error);
-      toast.error("Failed to update WhatsApp draft.");
+      toast.error("Failed to delete lead");
     }
   };
 
   return (
-    <div className="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-8">
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="p-6 max-w-7xl mx-auto space-y-6 dark:bg-gray-900 min-h-screen">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-800 dark:text-white sm:text-3xl">
-            Leads
-          </h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Track and manage all your leads in one place.
-          </p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Leads Management</h1>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Manage and track your potential clients</p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-600 dark:bg-blue-500/10 dark:text-blue-300">
-            Total {totalLeads} lead{totalLeads === 1 ? "" : "s"}
-          </span>
-          <button
-            onClick={() => handleOpen()}
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-50 dark:focus:ring-offset-gray-900"
+        
+        <div className="flex items-center gap-3">
+          <div className="relative group">
+            <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 group-focus-within:text-blue-500 transition-colors" />
+            <input
+              type="text"
+              placeholder="Search leads..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all w-64 shadow-sm placeholder-gray-400 dark:placeholder-gray-500"
+            />
+          </div>
+          <button 
+            onClick={() => { setEditingLead(null); setIsAddEditOpen(true); }}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-all shadow-sm hover:shadow-md font-medium"
           >
-            <span className="text-lg leading-none">＋</span>
-            <span>Add Lead</span>
+            <FaPlus size={14} /> Add Lead
           </button>
         </div>
       </div>
 
-      {loading ? (
-        <div className="rounded-xl bg-white p-6 shadow-md dark:bg-white/[0.03]">
-          <TableSkeleton rows={10} cols={5} />
+      {/* Bulk Actions Bar */}
+      {selectedLeadIds.length > 0 && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 p-3 rounded-lg flex items-center justify-between animate-fade-in">
+          <span className="text-blue-700 dark:text-blue-300 font-medium px-2">
+            {selectedLeadIds.length} lead{selectedLeadIds.length > 1 ? 's' : ''} selected
+          </span>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setSelectedLeadIds([])}
+              className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-sm font-medium px-3 py-1.5"
+            >
+              Cancel
+            </button>
+            <button 
+              onClick={handleBulkDelete}
+              className="flex items-center gap-2 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 text-red-700 dark:text-red-300 px-4 py-1.5 rounded-md transition-colors text-sm font-medium"
+            >
+              <FaTrash size={14} /> Delete Selected
+            </button>
+          </div>
         </div>
-      ) : (leads || []).length === 0 ? (
-        <div className="rounded-xl bg-white p-6 shadow-md dark:bg-white/[0.03]">
-          <p className="text-center text-gray-600 dark:text-gray-300">
-            {searchQuery 
-              ? `No leads found matching "${searchQuery}"` 
-              : "No leads found. Create your first lead!"}
-          </p>
-        </div>
-      ) : (
-        <div className="rounded-xl bg-white shadow-md dark:bg-white/[0.03]">
-          <div className="w-full overflow-x-auto overflow-y-visible min-h-[500px] md:min-h-[400px]">
-            <table className="w-full min-w-[720px] text-left">
-            <thead className="border-b border-gray-200 dark:border-strokedark">
-              <tr>
-                <th className="px-6 py-6 md:py-4 text-sm font-medium text-gray-500 dark:text-gray-400">
-                  Business
-                </th>
-                <th className="px-6 py-6 md:py-4 text-sm font-medium text-gray-500 dark:text-gray-400">
-                  Contact
-                </th>
-                <th className="px-6 py-6 md:py-4 text-sm font-medium text-gray-500 dark:text-gray-400">
-                  Status
-                </th>
-                <th className="px-6 py-6 md:py-4 text-sm font-medium text-gray-500 dark:text-gray-400">
-                  Follow-up
-                </th>
-                <th className="px-6 py-6 md:py-4 text-sm font-medium text-gray-500 dark:text-gray-400">
-                  Actions
-                </th>
-              </tr>
-            </thead>
+      )}
 
-            <tbody className="divide-y divide-gray-100 dark:divide-strokedark">
-              {(leads || []).map((lead, index) => (
-                <tr
-                  key={lead._id}
-                  className="hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors"
-                >
-                  <td className="px-6 py-6 md:py-4 align-middle font-medium text-gray-800 dark:text-white">
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/leads/${lead._id}`)}
-                      className="rounded text-left text-blue-600 transition-colors hover:text-blue-700 hover:underline dark:text-blue-400"
+      {/* Table Section */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+        {loading ? (
+          <div className="p-6">
+            <TableSkeleton />
+          </div>
+        ) : leads.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-4 text-gray-400 dark:text-gray-500">
+              <FaSearch size={24} />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white">No leads found</h3>
+            <p className="text-gray-500 dark:text-gray-400 mt-1 max-w-sm">
+              {searchQuery ? `No results for "${searchQuery}"` : "Get started by adding your first lead manually or importing from maps."}
+            </p>
+            {!searchQuery && (
+              <button 
+                onClick={() => { setEditingLead(null); setIsAddEditOpen(true); }}
+                className="mt-4 text-blue-600 hover:text-blue-700 font-medium"
+              >
+                + Add New Lead
+              </button>
+            )}
+          </div>
+        ) : (
+          <>
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+                    <th className="p-4 w-12 text-center">
+                      <input 
+                        type="checkbox" 
+                        className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer dark:bg-gray-700"
+                        checked={leads.length > 0 && selectedLeadIds.length === leads.length}
+                        onChange={handleSelectAll}
+                      />
+                    </th>
+                    <th className="p-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Business</th>
+                    <th className="p-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Contact</th>
+                    <th className="p-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                    <th className="p-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Score</th>
+                    <th className="p-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                  {leads.map((lead) => (
+                    <tr 
+                      key={lead._id} 
+                      className={`hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group ${selectedLeadIds.includes(lead._id) ? 'bg-blue-50/30 dark:bg-blue-900/20' : ''}`}
                     >
-                      {lead.businessName}
-                    </button>
-                  </td>
-                  <td className="px-6 py-6 md:py-4 align-middle text-gray-600 dark:text-gray-300">
-                    {lead.contactName || "-"}
-                  </td>
-                  <td className="px-6 py-6 md:py-4 align-middle">
-                    <StatusBadge status={lead.status} />
-                  </td>
-                  <td className="px-6 py-6 md:py-4 align-middle text-gray-600 dark:text-gray-300">
-                    {lead.nextFollowUp
-                      ? new Date(lead.nextFollowUp).toLocaleDateString()
-                      : "-"}
-                  </td>
-                  <td className="px-6 py-6 md:py-4 align-middle">
-                    <div className="flex items-center gap-3">
-                      <div className="flex gap-1">
-                        {lead.email && (
-                          <button
-                            onClick={() => handleOpenEmailModal(lead)}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg text-blue-600 transition-colors hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                      <td className="p-4 text-center">
+                        <input 
+                          type="checkbox" 
+                          className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer dark:bg-gray-700"
+                          checked={selectedLeadIds.includes(lead._id)}
+                          onChange={() => handleSelectLead(lead._id)}
+                        />
+                      </td>
+                      <td className="p-4">
+                        <div className="font-medium text-gray-900 dark:text-white">
+                          <Link to={`/leads/${lead._id}`} className="hover:text-blue-600 dark:hover:text-blue-400 hover:underline">
+                            {lead.businessName}
+                          </Link>
+                        </div>
+                        {lead.website && (
+                          <a 
+                            href={lead.website} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="text-xs text-blue-500 hover:underline truncate block max-w-[200px]"
+                          >
+                            {lead.website.replace(/^https?:\/\//, '')}
+                          </a>
+                        )}
+                      </td>
+                      <td className="p-4">
+                        <div className="text-sm text-gray-900 dark:text-gray-200">{lead.contactName || "—"}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">{lead.email || lead.phone || "No contact info"}</div>
+                      </td>
+                      <td className="p-4">
+                        <StatusBadge status={lead.status} />
+                      </td>
+                      <td className="p-4">
+                        {lead.leadScore ? (
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                            lead.leadScore >= 80 ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300" :
+                            lead.leadScore >= 50 ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300" :
+                            "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
+                          }`}>
+                            {lead.leadScore}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400 dark:text-gray-500">—</span>
+                        )}
+                      </td>
+                      <td className="p-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button 
+                            onClick={() => { setOutreachLead(lead); setIsEmailOpen(true); }}
+                            className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
                             title="Send Email"
                           >
-                            <FaEnvelope className="h-3.5 w-3.5" />
+                            <FaEnvelope size={14} />
                           </button>
-                        )}
-                        {lead.phone && (
-                          <>
-                            <button
-                              onClick={() => handleOpenWhatsAppModal(lead)}
-                              className="flex h-8 w-8 items-center justify-center rounded-lg text-green-600 transition-colors hover:bg-green-50 dark:hover:bg-green-900/20"
-                              title="Send WhatsApp"
-                            >
-                              <FaWhatsapp className="h-4 w-4" />
-                            </button>
-                            <button
+                          <button 
+                            onClick={() => { setOutreachLead(lead); setIsWhatsAppOpen(true); }}
+                            className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30 rounded transition-colors"
+                            title="WhatsApp"
+                          >
+                            <FaWhatsapp size={14} />
+                          </button>
+                          {lead.phone && (
+                            <button 
                               onClick={() => openCall(lead.phone!)}
-                              className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-600 transition-colors hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-700"
+                              className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded transition-colors"
                               title="Call"
                             >
-                              <FaPhoneAlt className="h-3.5 w-3.5" />
+                              <FaPhoneAlt size={14} />
                             </button>
-                          </>
-                        )}
-                      </div>
-
-                      <div className="relative border-l border-gray-200 pl-2 dark:border-gray-700">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setOpenActionId(
-                              openActionId === lead._id ? null : lead._id
-                            )
-                          }
-                          className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
-                            openActionId === lead._id 
-                              ? "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-white" 
-                              : "text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
-                          }`}
-                          title="More actions"
-                        >
-                          <FaEllipsisV className="h-3.5 w-3.5" />
-                        </button>
-
-                        {openActionId === lead._id && (
-                          <div 
-                            ref={actionMenuRef}
-                            className={`absolute right-0 z-[100] mt-1 w-40 rounded-lg border border-gray-200 bg-white py-1 shadow-xl dark:border-gray-700 dark:bg-gray-900 ${
-                              index > (leads || []).length - 3 && (leads || []).length > 3 ? "bottom-full mb-1" : "top-full"
-                            }`}
+                          )}
+                          <div className="w-px h-4 bg-gray-200 dark:bg-gray-700 mx-1"></div>
+                          <button 
+                            onClick={() => { setEditingLead(lead); setIsAddEditOpen(true); }}
+                            className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                            title="Edit"
                           >
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setOpenActionId(null);
-                                navigate(`/leads/${lead._id}`);
-                              }}
-                              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
-                            >
-                              <FaEye className="h-4 w-4 text-blue-500" />
-                              <span>View Details</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setOpenActionId(null);
-                                handleOpen(lead);
-                              }}
-                              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
-                            >
-                              <FaEdit className="h-4 w-4 text-green-500" />
-                              <span>Edit Lead</span>
-                            </button>
-                            <div className="my-1 border-t border-gray-100 dark:border-gray-800"></div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setOpenActionId(null);
-                                handleDelete(lead._id);
-                              }}
-                              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/40"
-                            >
-                              <FaTrash className="h-4 w-4" />
-                              <span>Delete Lead</span>
-                            </button>
-                          </div>
+                            <FaEdit size={14} />
+                          </button>
+                          <button 
+                            onClick={() => handleDelete(lead._id)}
+                            className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
+                            title="Delete"
+                          >
+                            <FaTrash size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-4 p-4">
+              {leads.map((lead) => (
+                <div 
+                  key={lead._id} 
+                  className={`bg-white dark:bg-gray-800 p-4 rounded-lg border shadow-sm ${
+                    selectedLeadIds.includes(lead._id) 
+                      ? 'border-blue-500 dark:border-blue-500 ring-1 ring-blue-500' 
+                      : 'border-gray-200 dark:border-gray-700'
+                  }`}
+                >
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex items-start gap-3">
+                      <input 
+                        type="checkbox" 
+                        className="mt-1 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer dark:bg-gray-700"
+                        checked={selectedLeadIds.includes(lead._id)}
+                        onChange={() => handleSelectLead(lead._id)}
+                      />
+                      <div>
+                        <Link 
+                          to={`/leads/${lead._id}`}
+                          className="font-medium text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 block"
+                        >
+                          {lead.businessName}
+                        </Link>
+                        {lead.website && (
+                          <a 
+                            href={lead.website} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="text-xs text-blue-500 hover:underline truncate block max-w-[200px]"
+                          >
+                            {lead.website.replace(/^https?:\/\//, '')}
+                          </a>
                         )}
                       </div>
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          </div>
+                    <StatusBadge status={lead.status} />
+                  </div>
 
-          {/* Pagination UI */}
-          <div className="flex items-center justify-between border-t border-gray-200 px-6 py-4 dark:border-strokedark">
-            <div className="flex items-center gap-2">
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Showing <span className="font-medium text-gray-900 dark:text-white">{(currentPage - 1) * limit + 1}</span> to{" "}
-                <span className="font-medium text-gray-900 dark:text-white">
-                  {Math.min(currentPage * limit, totalLeads)}
-                </span>{" "}
-                of <span className="font-medium text-gray-900 dark:text-white">{totalLeads}</span> leads
-              </p>
+                  <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
+                    <div>
+                      <span className="text-gray-500 dark:text-gray-400 text-xs block mb-1">Contact</span>
+                      <div className="text-gray-900 dark:text-gray-200 font-medium">{lead.contactName || "—"}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{lead.email || lead.phone}</div>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 dark:text-gray-400 text-xs block mb-1">Score</span>
+                      {lead.leadScore ? (
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                          lead.leadScore >= 80 ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300" :
+                          lead.leadScore >= 50 ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300" :
+                          "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
+                        }`}>
+                          {lead.leadScore}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-400 dark:text-gray-500">—</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700">
+                    <div className="flex gap-1">
+                      <button 
+                        onClick={() => { setOutreachLead(lead); setIsEmailOpen(true); }}
+                        className="p-2 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
+                      >
+                        <FaEnvelope size={16} />
+                      </button>
+                      <button 
+                        onClick={() => { setOutreachLead(lead); setIsWhatsAppOpen(true); }}
+                        className="p-2 text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/30 rounded transition-colors"
+                      >
+                        <FaWhatsapp size={16} />
+                      </button>
+                      {lead.phone && (
+                        <button 
+                          onClick={() => openCall(lead.phone!)}
+                          className="p-2 text-gray-500 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded transition-colors"
+                        >
+                          <FaPhoneAlt size={16} />
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => { setEditingLead(lead); setIsAddEditOpen(true); }}
+                        className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
+                      >
+                        <FaEdit /> Edit
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(lead._id)}
+                        className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
+                      >
+                        <FaTrash />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
-            <div className="flex items-center gap-2">
+          </>
+        )}
+        
+        {/* Pagination */}
+        {leads.length > 0 && (
+          <div className="bg-gray-50 dark:bg-gray-900/50 px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex flex-col md:flex-row items-center justify-between gap-4 md:gap-0">
+            <div className="text-xs text-gray-500 dark:text-gray-400">
+              Showing <span className="font-medium">{(currentPage - 1) * 10 + 1}</span> to <span className="font-medium">{Math.min(currentPage * 10, totalLeads)}</span> of <span className="font-medium">{totalLeads}</span> leads
+            </div>
+            <div className="flex gap-2">
               <button
-                onClick={() => handlePageChange(currentPage - 1)}
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="flex h-9 items-center justify-center rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50 disabled:hover:bg-white dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-white/[0.04]"
+                className="px-3 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Previous
               </button>
-              <div className="flex items-center gap-1">
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                  <button
-                    key={page}
-                    onClick={() => handlePageChange(page)}
-                    className={`flex h-9 w-9 items-center justify-center rounded-lg text-sm font-medium transition-colors ${
-                      currentPage === page
-                        ? "bg-blue-600 text-white"
-                        : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-white/[0.04]"
-                    }`}
-                  >
-                    {page}
-                  </button>
-                ))}
-              </div>
               <button
-                onClick={() => handlePageChange(currentPage + 1)}
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
-                className="flex h-9 items-center justify-center rounded-lg border border-gray-200 bg-white px-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50 disabled:hover:bg-white dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-white/[0.04]"
+                className="px-3 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Next
               </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* Email Draft Modal */}
-      <Modal
-        isOpen={isEmailModalOpen}
-        onClose={() => setIsEmailModalOpen(false)}
-        className="max-w-2xl p-6"
-      >
-        <div className="mb-4 flex items-center justify-between border-b pb-4 dark:border-gray-700">
-          <h3 className="text-xl font-bold text-gray-800 dark:text-white">
-            AI Email Outreach
-          </h3>
-        </div>
-
-        <div className="space-y-4">
-          {selectedLead && !selectedLead.emailDraft ? (
-            <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-8 text-center dark:bg-gray-800">
-              <p className="mb-4 text-gray-500">No email draft generated yet.</p>
-              <button
-                onClick={handleGenerateEmail}
-                disabled={generatingEmail}
-                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-              >
-                {generatingEmail ? (
-                  "Generating..."
-                ) : (
-                  <>
-                    <FaMagic /> Generate AI Draft
-                  </>
-                )}
-              </button>
-            </div>
-          ) : selectedLead && selectedLead.emailDraft ? (
-            <div className="space-y-4">
-              <div>
-                <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-gray-500">
-                  Subject
-                </label>
-                {isEditingEmail ? (
-                  <input
-                    type="text"
-                    value={editedEmailSubject}
-                    onChange={(e) => setEditedEmailSubject(e.target.value)}
-                    className="w-full rounded-lg border border-gray-200 bg-white p-3 text-sm font-medium text-gray-800 focus:border-blue-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                  />
-                ) : (
-                  <p className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm font-medium text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-white">
-                    {selectedLead.emailDraft.subject}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-gray-500">
-                  Body
-                </label>
-                {isEditingEmail ? (
-                  <textarea
-                    value={editedEmailBody}
-                    onChange={(e) => setEditedEmailBody(e.target.value)}
-                    rows={10}
-                    className="w-full rounded-lg border border-gray-200 bg-white p-3 text-sm text-gray-700 focus:border-blue-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
-                  />
-                ) : (
-                  <div className="max-h-[300px] overflow-y-auto rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm leading-relaxed text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                    <p className="whitespace-pre-wrap">{selectedLead.emailDraft.body}</p>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t dark:border-gray-700">
-                <div className="flex gap-2">
-                  {!isEditingEmail && (
-                    <button
-                      onClick={handleEditEmail}
-                      className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
-                    >
-                      Edit
-                    </button>
-                  )}
-                  <button
-                    onClick={handleGenerateEmail}
-                    disabled={generatingEmail}
-                    className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
-                  >
-                    <FaSync className={generatingEmail ? "animate-spin" : ""} />
-                    {generatingEmail ? "Generating..." : "Regenerate"}
-                  </button>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setIsEmailModalOpen(false)}
-                    className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
-                  >
-                    Cancel
-                  </button>
-                  {isEditingEmail ? (
-                    <button
-                      onClick={handleSaveEmailDraft}
-                      className="flex items-center gap-2 rounded-lg bg-blue-600 px-6 py-2 text-sm font-medium text-white hover:bg-blue-700"
-                    >
-                      Save & Preview
-                    </button>
-                  ) : (
-                    <button
-                      onClick={handleSendEmail}
-                      disabled={sendingEmail}
-                      className="flex items-center gap-2 rounded-lg bg-blue-600 px-6 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-                    >
-                      {sendingEmail ? (
-                        "Sending..."
-                      ) : (
-                        <>
-                          <FaRegPaperPlane /> Send Mail
-                        </>
-                      )}
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          ) : null}
-        </div>
-      </Modal>
-
-      {/* WhatsApp Draft Modal */}
-      <Modal
-        isOpen={isWhatsAppModalOpen}
-        onClose={() => setIsWhatsAppModalOpen(false)}
-        className="max-w-2xl p-6"
-      >
-        <div className="mb-4 flex items-center justify-between border-b pb-4 dark:border-gray-700">
-          <h3 className="text-xl font-bold text-gray-800 dark:text-white">
-            WhatsApp Outreach
-          </h3>
-        </div>
-
-        <div className="space-y-4">
-          {selectedLead && !selectedLead.whatsappDraft ? (
-            <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-8 text-center dark:bg-gray-800">
-              <p className="mb-4 text-gray-500">No WhatsApp draft generated yet.</p>
-              <button
-                onClick={handleGenerateWhatsApp}
-                disabled={generatingWhatsApp}
-                className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
-              >
-                {generatingWhatsApp ? (
-                  "Generating..."
-                ) : (
-                  <>
-                    <FaMagic /> Generate AI Draft
-                  </>
-                )}
-              </button>
-            </div>
-          ) : selectedLead && selectedLead.whatsappDraft ? (
-            <div className="space-y-4">
-              <div>
-                <label className="mb-1 block text-xs font-bold uppercase tracking-wide text-gray-500">
-                  Message Body
-                </label>
-                {isEditingWhatsApp ? (
-                  <textarea
-                    value={editedWhatsAppBody}
-                    onChange={(e) => setEditedWhatsAppBody(e.target.value)}
-                    rows={8}
-                    className="w-full rounded-lg border border-gray-200 bg-white p-3 text-sm text-gray-700 focus:border-blue-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
-                  />
-                ) : (
-                  <div className="max-h-[300px] overflow-y-auto rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm leading-relaxed text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                    <p className="whitespace-pre-wrap">{selectedLead.whatsappDraft.body}</p>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t dark:border-gray-700">
-                <div className="flex gap-2">
-                  {!isEditingWhatsApp && (
-                    <button
-                      onClick={handleEditWhatsApp}
-                      className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
-                    >
-                      Edit
-                    </button>
-                  )}
-                  <button
-                    onClick={handleGenerateWhatsApp}
-                    disabled={generatingWhatsApp}
-                    className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
-                  >
-                    <FaSync className={generatingWhatsApp ? "animate-spin" : ""} />
-                    {generatingWhatsApp ? "Generating..." : "Regenerate"}
-                  </button>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setIsWhatsAppModalOpen(false)}
-                    className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
-                  >
-                    Cancel
-                  </button>
-                  {isEditingWhatsApp ? (
-                    <button
-                      onClick={handleSaveWhatsAppDraft}
-                      className="flex items-center gap-2 rounded-lg bg-green-600 px-6 py-2 text-sm font-medium text-white hover:bg-green-700"
-                    >
-                      Save & Preview
-                    </button>
-                  ) : (
-                    <button
-                      onClick={handleSendWhatsApp}
-                      className="flex items-center gap-2 rounded-lg bg-green-600 px-6 py-2 text-sm font-medium text-white hover:bg-green-700"
-                    >
-                      <FaWhatsapp className="h-5 w-5" />
-                      Open WhatsApp
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          ) : null}
-        </div>
-      </Modal>
-      {open && (
-        <div 
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              handleClose();
-            }
-          }}
-        >
-          <div className="w-full max-w-2xl max-h-[90vh] flex flex-col rounded-xl bg-white shadow-2xl dark:bg-white/[0.03] overflow-hidden">
-            {/* Header - Fixed */}
-            <div className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-5 dark:border-strokedark dark:bg-white/[0.03] flex-shrink-0">
-              <h2 className="text-xl font-semibold text-gray-800 dark:text-white">
-                {editingLead ? "Edit Lead" : "Add New Lead"}
-              </h2>
-              <button
-                type="button"
-                onClick={handleClose}
-                className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300 transition-colors"
-                aria-label="Close"
-              >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Form - Scrollable */}
-            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6">
-              <div className="space-y-5">
-                {/* Business Information Section */}
-                <div className="space-y-4">
-                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 border-b pb-2">
-                    Business Information
-                  </h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="md:col-span-2">
-                      <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Business Name <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.businessName}
-                        onChange={(e) => {
-                          setFormData({ ...formData, businessName: e.target.value });
-                          if (errors.businessName) {
-                            setErrors({ ...errors, businessName: "" });
-                          }
-                        }}
-                        className={`w-full rounded-lg border px-4 py-2.5 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white dark:border-gray-700 ${
-                          errors.businessName ? "border-red-500" : "border-gray-300"
-                        }`}
-                        placeholder="Enter business name"
-                      />
-                      {errors.businessName && (
-                        <p className="mt-1 text-xs text-red-500">{errors.businessName}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Contact Name
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.contactName || ""}
-                        onChange={(e) =>
-                          setFormData({ ...formData, contactName: e.target.value })
-                        }
-                        className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white dark:border-gray-700"
-                        placeholder="Contact person name"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Source
-                      </label>
-                      <select
-                        value={formData.source || "Manual"}
-                        onChange={(e) =>
-                          setFormData({ ...formData, source: e.target.value })
-                        }
-                        className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white dark:border-gray-700"
-                      >
-                        <option value="Manual">Manual</option>
-                        <option value="Website">Website</option>
-                        <option value="Referral">Referral</option>
-                        <option value="Social Media">Social Media</option>
-                        <option value="Email Campaign">Email Campaign</option>
-                        <option value="Other">Other</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Contact Information Section */}
-                <div className="space-y-4">
-                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 border-b pb-2">
-                    Contact Information
-                  </h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Email
-                      </label>
-                      <input
-                        type="email"
-                        value={formData.email || ""}
-                        onChange={(e) => {
-                          setFormData({ ...formData, email: e.target.value });
-                          if (errors.email) {
-                            setErrors({ ...errors, email: "" });
-                          }
-                        }}
-                        className={`w-full rounded-lg border px-4 py-2.5 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white dark:border-gray-700 ${
-                          errors.email ? "border-red-500" : "border-gray-300"
-                        }`}
-                        placeholder="example@email.com"
-                      />
-                      {errors.email && (
-                        <p className="mt-1 text-xs text-red-500">{errors.email}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Phone
-                      </label>
-                      <input
-                        type="tel"
-                        value={formData.phone || ""}
-                        onChange={(e) =>
-                          setFormData({ ...formData, phone: e.target.value })
-                        }
-                        className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white dark:border-gray-700"
-                        placeholder="+1 (555) 123-4567"
-                      />
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Website
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.website || ""}
-                        onChange={(e) => {
-                          setFormData({ ...formData, website: e.target.value });
-                          if (errors.website) {
-                            setErrors({ ...errors, website: "" });
-                          }
-                        }}
-                        className={`w-full rounded-lg border px-4 py-2.5 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white dark:border-gray-700 ${
-                          errors.website ? "border-red-500" : "border-gray-300"
-                        }`}
-                        placeholder="https://example.com or example.com"
-                      />
-                      {errors.website && (
-                        <p className="mt-1 text-xs text-red-500">{errors.website}</p>
-                      )}
-                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">URL will be automatically formatted</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Status & Follow-up Section */}
-                <div className="space-y-4">
-                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 border-b pb-2">
-                    Status & Follow-up
-                  </h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Status
-                      </label>
-                      <select
-                        value={formData.status}
-                        onChange={(e) =>
-                          setFormData({ ...formData, status: e.target.value as LeadFormData["status"] })
-                        }
-                        className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white dark:border-gray-700"
-                      >
-                        <option value="New">New</option>
-                        <option value="Contacted">Contacted</option>
-                        <option value="FollowUp">Follow-up</option>
-                        <option value="Interested">Interested</option>
-                        <option value="Converted">Converted</option>
-                        <option value="Lost">Lost</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Next Follow-up
-                      </label>
-                      <div className="relative">
-                        <input
-                          ref={datePickerRef}
-                          type="text"
-                          readOnly
-                          value={formData.nextFollowUp || ""}
-                          placeholder="Select date"
-                          className="w-full rounded-lg border border-gray-300 px-4 py-2.5 pr-10 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white dark:border-gray-700 cursor-pointer"
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none dark:text-gray-400">
-                          <CalenderIcon className="size-5" />
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Notes Section */}
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Notes
-                  </label>
-                  <textarea
-                    value={formData.notes || ""}
-                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                      setFormData({ ...formData, notes: e.target.value })
-                    }
-                    className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white dark:border-gray-700"
-                    rows={4}
-                    placeholder="Add any additional notes about this lead..."
-                  />
-                </div>
-
-              </div>
-
-              {/* Footer Actions */}
-              <div className="mt-6 flex justify-end gap-3 border-t border-gray-200 pt-4 dark:border-strokedark">
-                <button
-                  type="button"
-                  onClick={handleClose}
-                  disabled={submitting}
-                  className="rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                >
-                  {submitting ? (
-                    <span className="flex items-center gap-2">
-                      <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                      </svg>
-                      {editingLead ? "Updating..." : "Saving..."}
-                    </span>
-                  ) : (
-                    editingLead ? "Update Lead" : "Create Lead"
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
+      {/* Modals */}
+      <AddEditLeadModal 
+        isOpen={isAddEditOpen} 
+        onClose={() => { setIsAddEditOpen(false); setEditingLead(null); }} 
+        onSubmit={handleAddEditSubmit}
+        initialData={editingLead}
+        isSubmitting={isSubmitting}
+      />
+      
+      <EmailDraftModal 
+        isOpen={isEmailOpen} 
+        onClose={() => setIsEmailOpen(false)} 
+        lead={outreachLead} 
+      />
+      
+      <WhatsAppDraftModal 
+        isOpen={isWhatsAppOpen} 
+        onClose={() => setIsWhatsAppOpen(false)} 
+        lead={outreachLead} 
+      />
     </div>
-
-    
   );
 };
 

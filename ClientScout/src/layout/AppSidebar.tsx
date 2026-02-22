@@ -12,6 +12,7 @@ import {
   UserCircleIcon,
   PieChartIcon,
   ListIcon,
+  DollarLineIcon,
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
 import { useUser } from "../context/UserContext";
@@ -54,6 +55,11 @@ const navItems: NavItem[] = [
     path: "/support",
     icon: <HorizontaLDots />,
   },
+  {
+    name: "Buy Credits",
+    path: "/purchase-credits",
+    icon: <DollarLineIcon />,
+  },
 ];
 
 const othersItems: NavItem[] = [];
@@ -73,6 +79,8 @@ const AppSidebar: React.FC = () => {
   const adminItems: NavItem[] = [
     { name: "Dashboard", path: "/admin", icon: <PieChartIcon /> },
     { name: "Users", path: "/admin/users", icon: <UserCircleIcon /> },
+    { name: "Transactions", path: "/admin/transactions", icon: <DollarLineIcon /> },
+    { name: "Pricing", path: "/admin/pricing", icon: <DollarLineIcon /> },
     { name: "Settings", path: "/admin/settings", icon: <PlugInIcon /> },
     { name: "Activity Logs", path: "/admin/logs", icon: <ListIcon /> },
   ];

@@ -6,6 +6,15 @@ import { analyzeWebsite } from "../services/aiService.js";
 import { sendEmail } from "../services/emailService.js";
 import { logAdminAction } from "../utils/logger.js";
 
+// Helper to get effective limit
+const getEffectiveLimit = async (user, userField, configKey, defaultVal = 100) => {
+  if (typeof user[userField] === 'number') {
+    return user[userField];
+  }
+  const config = await Config.findOne({ key: configKey });
+  return config && typeof config.value === 'number' ? config.value : defaultVal;
+};
+
 /* CREATE LEAD */
 export const createLead = async (req, res) => {
   const lead = await Lead.create({
@@ -229,6 +238,23 @@ export const analyzeLead = async (req, res) => {
     return res.status(401).json({ message: "Unauthorized" });
   }
 
+  // Check AI usage limits
+  const user = await User.findById(req.user._id);
+  const today = new Date();
+  const lastUsed = user.lastAIUsedAt ? new Date(user.lastAIUsedAt) : null;
+
+  // Reset if new month
+  if (lastUsed && (lastUsed.getMonth() !== today.getMonth() || lastUsed.getFullYear() !== today.getFullYear())) {
+    user.aiUsageCount = 0;
+  }
+
+  const monthlyLimit = await getEffectiveLimit(user, "maxMonthlyAICallsPerUser", "maxMonthlyAICallsPerUser", 100);
+  const extraCredits = user.extraAICallsCredits || 0;
+
+  if (user.aiUsageCount >= monthlyLimit && extraCredits <= 0) {
+    return res.status(403).json({ message: `Monthly AI call limit (${monthlyLimit}) exceeded.` });
+  }
+
   try {
     if (!process.env.GEMINI_API_KEY) {
       return res.status(500).json({ message: "Gemini API key not configured" });
@@ -256,10 +282,13 @@ export const analyzeLead = async (req, res) => {
     );
 
     // Increment AI Usage Count and store lastAIUsedAt
-    await User.findByIdAndUpdate(req.user._id, { 
-      $inc: { aiUsageCount: 1 },
-      lastAIUsedAt: new Date()
-    });
+    if (user.aiUsageCount < monthlyLimit) {
+      user.aiUsageCount += 1;
+    } else {
+      user.extraAICallsCredits -= 1;
+    }
+    user.lastAIUsedAt = new Date();
+    await user.save();
 
     // Log successful AI Action
     await logAdminAction({
@@ -339,15 +368,18 @@ export const generateEmail = async (req, res) => {
 
   // Check AI usage limits
   const today = new Date();
-  today.setHours(0, 0, 0, 0); // Reset time to start of day
+  const lastUsed = user.lastAIUsedAt ? new Date(user.lastAIUsedAt) : null;
 
-  if (user.lastAIUsedAt && user.lastAIUsedAt.setHours(0, 0, 0, 0) < today.setHours(0, 0, 0, 0)) {
-    // If last AI use was on a previous day, reset count
+  // Reset if new month
+  if (lastUsed && (lastUsed.getMonth() !== today.getMonth() || lastUsed.getFullYear() !== today.getFullYear())) {
     user.aiUsageCount = 0;
   }
 
-  if (user.aiUsageCount >= user.maxDailyAICallsPerUser) {
-    return res.status(403).json({ message: `Daily AI call limit (${user.maxDailyAICallsPerUser}) exceeded.` });
+  const monthlyLimit = await getEffectiveLimit(user, "maxMonthlyAICallsPerUser", "maxMonthlyAICallsPerUser", 100);
+  const extraCredits = user.extraAICallsCredits || 0;
+
+  if (user.aiUsageCount >= monthlyLimit && extraCredits <= 0) {
+    return res.status(403).json({ message: `Monthly AI call limit (${monthlyLimit}) exceeded.` });
   }
 
   try {
@@ -370,7 +402,11 @@ export const generateEmail = async (req, res) => {
     await lead.save();
 
     // Increment AI Usage Count and store lastAIUsedAt
-    user.aiUsageCount += 1;
+    if (user.aiUsageCount < monthlyLimit) {
+      user.aiUsageCount += 1;
+    } else {
+      user.extraAICallsCredits -= 1;
+    }
     user.lastAIUsedAt = new Date();
     await user.save();
 
@@ -416,15 +452,18 @@ export const sendLeadEmail = async (req, res) => {
 
   // Check email usage limits
   const today = new Date();
-  today.setHours(0, 0, 0, 0); // Reset time to start of day
+  const lastUsed = user.lastEmailSentAt ? new Date(user.lastEmailSentAt) : null;
 
-  if (user.lastEmailSentAt && user.lastEmailSentAt.setHours(0, 0, 0, 0) < today.setHours(0, 0, 0, 0)) {
-    // If last email sent was on a previous day, reset count
+  // Reset if new month
+  if (lastUsed && (lastUsed.getMonth() !== today.getMonth() || lastUsed.getFullYear() !== today.getFullYear())) {
     user.emailUsageCount = 0;
   }
 
-  if (user.emailUsageCount >= user.maxDailyEmailsPerUser) {
-    return res.status(403).json({ message: `Daily email limit (${user.maxDailyEmailsPerUser}) exceeded.` });
+  const monthlyLimit = await getEffectiveLimit(user, "maxMonthlyEmailsPerUser", "maxMonthlyEmailsPerUser", 100);
+  const extraCredits = user.extraEmailCredits || 0;
+
+  if (user.emailUsageCount >= monthlyLimit && extraCredits <= 0) {
+    return res.status(403).json({ message: `Monthly email limit (${monthlyLimit}) exceeded.` });
   }
 
   try {
@@ -476,7 +515,11 @@ export const sendLeadEmail = async (req, res) => {
     });
 
     // Increment Email Usage Count and store lastEmailSentAt
-    user.emailUsageCount += 1;
+    if (user.emailUsageCount < monthlyLimit) {
+      user.emailUsageCount += 1;
+    } else {
+      user.extraEmailCredits -= 1;
+    }
     user.lastEmailSentAt = new Date();
     await user.save();
 
@@ -518,6 +561,23 @@ export const generateWhatsApp = async (req, res) => {
     return res.status(404).json({ message: "Lead not found" });
   }
 
+  // Check AI usage limits
+  const user = await User.findById(req.user._id);
+  const today = new Date();
+  const lastUsed = user.lastAIUsedAt ? new Date(user.lastAIUsedAt) : null;
+
+  // Reset if new month
+  if (lastUsed && (lastUsed.getMonth() !== today.getMonth() || lastUsed.getFullYear() !== today.getFullYear())) {
+    user.aiUsageCount = 0;
+  }
+
+  const monthlyLimit = await getEffectiveLimit(user, "maxMonthlyAICallsPerUser", "maxMonthlyAICallsPerUser", 100);
+  const extraCredits = user.extraAICallsCredits || 0;
+
+  if (user.aiUsageCount >= monthlyLimit && extraCredits <= 0) {
+    return res.status(403).json({ message: `Monthly AI call limit (${monthlyLimit}) exceeded.` });
+  }
+
   try {
     const { generateWhatsAppDraft } = await import("../services/aiService.js");
     const whatsappMsg = await generateWhatsAppDraft(
@@ -536,10 +596,13 @@ export const generateWhatsApp = async (req, res) => {
     await lead.save();
 
     // Increment AI Usage Count and store lastAIUsedAt
-    await User.findByIdAndUpdate(req.user._id, { 
-      $inc: { aiUsageCount: 1 },
-      lastAIUsedAt: new Date()
-    });
+    if (user.aiUsageCount < monthlyLimit) {
+      user.aiUsageCount += 1;
+    } else {
+      user.extraAICallsCredits -= 1;
+    }
+    user.lastAIUsedAt = new Date();
+    await user.save();
 
     res.json(lead);
   } catch (error) {
@@ -564,28 +627,36 @@ export const trackMapSearchUsage = async (req, res) => {
     }
 
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const lastUsed = user.lastMapSearchAt ? new Date(user.lastMapSearchAt) : null;
 
-    if (user.lastMapSearchAt && user.lastMapSearchAt.setHours(0, 0, 0, 0) < today.getTime()) {
+    if (lastUsed && (lastUsed.getMonth() !== today.getMonth() || lastUsed.getFullYear() !== today.getFullYear())) {
       user.mapSearchCount = 0;
     }
 
-    const limit = typeof user.maxDailyMapSearchesPerUser === "number" ? user.maxDailyMapSearchesPerUser : 0;
+    const limit = await getEffectiveLimit(user, "maxMonthlyMapSearchesPerUser", "maxMonthlyMapSearchesPerUser", 100);
+    const extraCredits = user.extraMapSearchCredits || 0;
+    const totalLimit = limit + extraCredits;
 
-    if (limit > 0 && user.mapSearchCount >= limit) {
-      return res.status(403).json({ message: `Daily Google Maps search limit (${limit}) exceeded.` });
+    if (user.mapSearchCount >= limit && extraCredits <= 0) {
+      return res.status(403).json({ message: `Monthly Google Maps search limit (${limit}) exceeded.` });
     }
 
-    user.mapSearchCount += 1;
+    if (user.mapSearchCount < limit) {
+      user.mapSearchCount += 1;
+    } else {
+      user.extraMapSearchCredits -= 1;
+    }
     user.lastMapSearchAt = new Date();
     await user.save();
 
-    const remaining = limit > 0 ? limit - user.mapSearchCount : null;
+    const remaining = limit > user.mapSearchCount ? limit - user.mapSearchCount : 0;
+    const extraRemaining = user.extraMapSearchCredits || 0;
 
     res.json({
       usedToday: user.mapSearchCount,
       limit,
       remaining,
+      extraRemaining
     });
   } catch (error) {
     console.error("Error tracking map search usage:", error);

@@ -48,7 +48,7 @@ const AdminLogs: React.FC = () => {
   const fetchLogs = async () => {
     try {
       setLoading(true);
-      const data = await adminService.getLogs(page);
+      const data = await adminService.getAdminLogs(page);
       setLogs(data.logs);
       setTotalPages(data.pages);
     } catch (error) {

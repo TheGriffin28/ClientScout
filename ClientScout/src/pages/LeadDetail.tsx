@@ -7,10 +7,12 @@ import { FaEnvelope, FaWhatsapp, FaPhoneAlt, FaMagic, FaCopy, FaCheckCircle, FaC
 import { openWhatsApp, openCall } from "../services/outreachService";
 import { Modal } from "../components/ui/modal";
 import { ProfileSkeleton } from "../components/ui/Skeleton";
+import { useUser } from "../context/UserContext";
 
 const LeadDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { refreshUser } = useUser();
   const [lead, setLead] = useState<Lead | null>(null);
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
@@ -71,9 +73,10 @@ const LeadDetail = () => {
       const updatedLead = await analyzeLead(id);
       setLead(updatedLead);
       toast.success("AI Analysis complete!");
-    } catch (error) {
+      refreshUser();
+    } catch (error: any) {
       console.error("Error analyzing lead:", error);
-      toast.error("Error analyzing lead. Please try again.");
+      toast.error(error.response?.data?.message || "Error analyzing lead. Please try again.");
     } finally {
       setAnalyzing(false);
     }
@@ -86,9 +89,10 @@ const LeadDetail = () => {
       const updatedLead = await generateEmailDraft(id);
       setLead(updatedLead);
       toast.success("Email draft generated!");
-    } catch (error) {
+      refreshUser();
+    } catch (error: any) {
       console.error("Error generating email:", error);
-      toast.error("Error generating email draft.");
+      toast.error(error.response?.data?.message || "Error generating email draft.");
     } finally {
       setGeneratingEmail(false);
     }
@@ -108,6 +112,7 @@ const LeadDetail = () => {
       setIsEmailModalOpen(false);
       // Refresh lead to update contact history
       await fetchLead();
+      refreshUser();
     } catch (error: any) {
       console.error("Error sending email:", error);
       toast.error(error.response?.data?.message || "Failed to send email.");
@@ -123,9 +128,10 @@ const LeadDetail = () => {
       const updatedLead = await generateWhatsAppDraft(id);
       setLead(updatedLead);
       toast.success("WhatsApp draft generated!");
-    } catch (error) {
+      refreshUser();
+    } catch (error: any) {
       console.error("Error generating WhatsApp:", error);
-      toast.error("Error generating WhatsApp draft.");
+      toast.error(error.response?.data?.message || "Error generating WhatsApp draft.");
     } finally {
       setGeneratingWhatsApp(false);
     }

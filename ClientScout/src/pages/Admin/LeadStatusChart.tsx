@@ -23,7 +23,7 @@ const LeadStatusChart: React.FC<LeadStatusChartProps> = ({ data }) => {
       fontFamily: 'Outfit, sans-serif',
       background: 'transparent',
     },
-    colors: ['#3C50E0', '#10B981', '#FF9C55', '#FF4560', '#775DD0', '#00E396'],
+    colors: ['#3C50E0', '#80CAEE', '#0FADCF', '#6577F3', '#8FD0EF', '#0FADCF'],
     labels: labels,
     legend: {
       show: true,
@@ -32,12 +32,39 @@ const LeadStatusChart: React.FC<LeadStatusChartProps> = ({ data }) => {
       labels: {
         colors: isDark ? '#E5E7EB' : '#4B5563',
       },
+      itemMargin: {
+        horizontal: 10,
+        vertical: 5
+      }
     },
     plotOptions: {
       pie: {
         donut: {
           size: '65%',
           background: 'transparent',
+          labels: {
+            show: true,
+            total: {
+              show: true,
+              showAlways: true,
+              label: 'Total Leads',
+              fontSize: '16px',
+              fontFamily: 'Outfit, sans-serif',
+              fontWeight: 600,
+              color: isDark ? '#fff' : '#000',
+              formatter: function (w) {
+                const total = w.globals.seriesTotals.reduce((a: number, b: number) => a + b, 0);
+                return total.toString();
+              }
+            },
+            value: {
+              show: true,
+              fontSize: '28px',
+              fontFamily: 'Outfit, sans-serif',
+              fontWeight: 'bold',
+              color: isDark ? '#fff' : '#000',
+            }
+          }
         },
       },
     },
@@ -65,13 +92,16 @@ const LeadStatusChart: React.FC<LeadStatusChartProps> = ({ data }) => {
     theme: {
       mode: isDark ? 'dark' : 'light',
     },
+    stroke: {
+        show: false
+    },
     tooltip: {
       theme: isDark ? 'dark' : 'light',
     },
   };
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white px-5 pt-7.5 pb-5 shadow-default dark:border-gray-800 dark:bg-white/[0.03] sm:px-7.5">
+    <div className="rounded-xl border border-gray-200 bg-white px-5 pt-7.5 pb-5 shadow-default dark:border-gray-700 dark:bg-gray-800 sm:px-7.5">
       <div className="mb-3 justify-between gap-4 sm:flex">
         <div>
           <h4 className="text-xl font-bold text-gray-800 dark:text-white/90">
@@ -92,23 +122,6 @@ const LeadStatusChart: React.FC<LeadStatusChartProps> = ({ data }) => {
             width={380}
           />
         </div>
-      </div>
-      
-      <div className="mt-4 flex flex-wrap items-center justify-center gap-y-3">
-        {data.map((item, index) => (
-          <div key={item.status} className="w-full px-8 sm:w-1/2">
-            <div className="flex w-full items-center">
-              <span 
-                className="mr-2 block h-3 w-full max-w-3 rounded-full"
-                style={{ backgroundColor: options.colors![index] }}
-              ></span>
-              <p className="flex w-full justify-between text-sm font-medium text-gray-800 dark:text-white/90">
-                <span>{item.status}</span>
-                <span>{item.count}</span>
-              </p>
-            </div>
-          </div>
-        ))}
       </div>
     </div>
   );

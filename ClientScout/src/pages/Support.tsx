@@ -2,13 +2,14 @@ import { useState } from "react";
 import toast from "react-hot-toast";
 import PageBreadcrumb from "../components/common/PageBreadCrumb";
 import PageMeta from "../components/common/PageMeta";
+import { supportService } from "../services/supportService";
 
 export default function Support() {
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!subject || !message) {
       toast.error("Please fill in all fields");
@@ -16,13 +17,17 @@ export default function Support() {
     }
 
     setIsSubmitting(true);
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      await supportService.sendSupportMessage(subject, message);
       toast.success("Message sent successfully! We'll get back to you soon.");
       setSubject("");
       setMessage("");
+    } catch (error: any) {
+      console.error("Failed to send support message:", error);
+      toast.error(error.response?.data?.message || "Failed to send message. Please try again.");
+    } finally {
       setIsSubmitting(false);
-    }, 1000);
+    }
   };
 
   return (

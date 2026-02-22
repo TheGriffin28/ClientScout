@@ -88,11 +88,11 @@ const LeadStatusChart: React.FC<LeadStatusChartProps> = ({ data }) => {
   };
 
   return (
-    <div className="col-span-12 rounded-xl border border-stroke bg-white px-5 pb-5 pt-7.5 shadow-default dark:border-gray-700 dark:bg-gray-800 sm:px-7.5 xl:col-span-6">
+    <div className="col-span-12 rounded-xl border border-gray-200 bg-white px-5 pb-5 pt-7.5 shadow-default dark:border-gray-700 dark:bg-gray-800 sm:px-7.5 xl:col-span-4">
       <div className="mb-3 justify-between gap-4 sm:flex">
         <div>
           <h5 className="text-xl font-semibold text-black dark:text-white">
-            Lead Status Breakdown
+            Lead Status
           </h5>
         </div>
       </div>

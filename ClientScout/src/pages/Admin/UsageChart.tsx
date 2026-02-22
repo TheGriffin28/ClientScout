@@ -100,11 +100,16 @@ const UsageChart: React.FC<UsageChartProps> = ({ categories, series }) => {
   };
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] md:p-6">
-      <div className="mb-4">
-        <h5 className="text-xl font-semibold text-gray-800 dark:text-white">
-          Platform Usage (AI Actions)
-        </h5>
+    <div className="rounded-xl border border-gray-200 bg-white px-5 pt-7.5 pb-5 shadow-default dark:border-gray-700 dark:bg-gray-800 sm:px-7.5">
+      <div className="mb-4 justify-between gap-4 sm:flex">
+        <div>
+          <h4 className="text-xl font-bold text-gray-800 dark:text-white/90">
+             Platform Usage
+          </h4>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+             AI Actions over time
+          </p>
+        </div>
       </div>
       <div>
         <ReactApexChart

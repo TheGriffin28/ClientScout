@@ -17,11 +17,14 @@ export interface AdminUser {
   aiUsageCount: number;
   lastLoginAt?: string;
   lastAIUsedAt?: string;
-  maxDailyEmailsPerUser?: number;
-  maxDailyAICallsPerUser?: number;
+  maxMonthlyEmailsPerUser?: number | null;
+  maxMonthlyAICallsPerUser?: number | null;
   mapSearchCount?: number;
   lastMapSearchAt?: string;
-  maxDailyMapSearchesPerUser?: number;
+  maxMonthlyMapSearchesPerUser?: number | null;
+  extraEmailCredits?: number;
+  extraAICallsCredits?: number;
+  extraMapSearchCredits?: number;
 }
 
 export interface AIUsageResponse {
@@ -68,7 +71,7 @@ export const adminService = {
     await api.patch(`/admin/users/${userId}/role`, { role });
   },
 
-  updateUserLimits: async (userId: string, limits: { maxDailyEmailsPerUser?: number; maxDailyAICallsPerUser?: number; maxDailyMapSearchesPerUser?: number }): Promise<void> => {
+  updateUserLimits: async (userId: string, limits: { maxMonthlyEmailsPerUser?: number | null; maxMonthlyAICallsPerUser?: number | null; maxMonthlyMapSearchesPerUser?: number | null; extraEmailCredits?: number; extraAICallsCredits?: number; extraMapSearchCredits?: number }): Promise<void> => {
     await api.patch(`/admin/users/${userId}/limits`, limits);
   },
 
@@ -91,8 +94,42 @@ export const adminService = {
     await api.patch(`/admin/config/${key}`, { value });
   },
 
-  getLogs: async (page = 1, limit = 20): Promise<any> => {
+  uploadQRCode: async (file: File): Promise<any> => {
+    const formData = new FormData();
+    formData.append("qrCode", file);
+    const response = await api.post("/admin/upload-qr", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return response.data;
+  },
+
+  async getAdminLogs(page = 1, limit = 20) {
     const response = await api.get(`/admin/logs?page=${page}&limit=${limit}`);
     return response.data;
   },
+
+  getTransactions: async (page = 1, limit = 10, search = "", status = "all"): Promise<{
+    transactions: any[];
+    page: number;
+    pages: number;
+    total: number;
+    stats: {
+      totalRevenue: number;
+      pendingCount: number;
+      todaySales: number;
+      totalTransactions: number;
+    }
+  }> => {
+    const response = await api.get(`/admin/transactions?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}&status=${status}`);
+    return response.data;
+  },
+
+  updateTransactionStatus: async (id: string, status: "completed" | "failed"): Promise<any> => {
+    const response = await api.put(`/admin/transactions/${id}/status`, { status });
+    return response.data;
+  }
 };
+
+export default adminService;

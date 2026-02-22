@@ -27,6 +27,8 @@ const userSchema = new mongoose.Schema(
     lastAIUsedAt: { type: Date },
     mapSearchCount: { type: Number, default: 0 },
     lastMapSearchAt: { type: Date },
+    emailUsageCount: { type: Number, default: 0 },
+    lastEmailSentAt: { type: Date },
 
     resetPasswordToken: String,
     resetPasswordExpires: Date,
@@ -34,9 +36,12 @@ const userSchema = new mongoose.Schema(
     otpExpires: Date,
     isVerified: { type: Boolean, default: false },
     twoFactorEnabled: { type: Boolean, default: false },
-    maxDailyEmailsPerUser: { type: Number, default: 50 }, // Default limit of 50 emails per day
-    maxDailyAICallsPerUser: { type: Number, default: 50 }, // Default limit of 50 AI calls per day
-    maxDailyMapSearchesPerUser: { type: Number, default: 50 },
+    maxMonthlyEmailsPerUser: { type: Number }, // Limit of emails per month (overrides global config)
+    maxMonthlyAICallsPerUser: { type: Number }, // Limit of AI calls per month (overrides global config)
+    maxMonthlyMapSearchesPerUser: { type: Number }, // Limit of map searches per month (overrides global config)
+    extraEmailCredits: { type: Number, default: 0 }, // Extra credits purchased for emails
+    extraAICallsCredits: { type: Number, default: 0 }, // Extra credits purchased for AI calls
+    extraMapSearchCredits: { type: Number, default: 0 }, // Extra credits purchased for map searches
   },
   { timestamps: true }
 );
