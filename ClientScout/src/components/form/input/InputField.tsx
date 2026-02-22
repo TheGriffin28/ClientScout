@@ -1,10 +1,12 @@
 import type React from "react";
 import type { FC } from "react";
+import Label from "../Label";
 
 interface InputProps {
   type?: "text" | "number" | "email" | "password" | "date" | "time" | string;
   id?: string;
   name?: string;
+  label?: string;
   placeholder?: string;
   value?: string | number;
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -23,6 +25,7 @@ const Input: FC<InputProps> = ({
   type = "text",
   id,
   name,
+  label,
   placeholder,
   value,
   onChange,
@@ -50,6 +53,11 @@ const Input: FC<InputProps> = ({
 
   return (
     <div className="relative">
+      {label && (
+        <Label htmlFor={id} className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-400">
+          {label}
+        </Label>
+      )}
       <input
         type={type}
         id={id}

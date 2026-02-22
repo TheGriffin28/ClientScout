@@ -5,7 +5,7 @@ import { useUser } from "../context/UserContext";
 import api from "../services/api";
 import { adminService } from "../services/adminService";
 import { toast } from "react-hot-toast";
-import { FaEnvelope, FaRobot, FaMapMarkerAlt, FaMobileAlt, FaStar, FaFire, FaRocket } from "react-icons/fa";
+import { FaEnvelope, FaRobot, FaMapMarkerAlt, FaFire, FaRocket } from "react-icons/fa";
 import { Modal } from "../components/ui/modal";
 import { QRCodeSVG } from "qrcode.react";
 
@@ -19,7 +19,7 @@ export default function PurchaseCredits() {
     name?: string;
     details?: string;
   } | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<"upi">("upi"); // Only UPI for now
+  const [paymentMethod] = useState<"upi">("upi"); // Only UPI for now
   const [transactionId, setTransactionId] = useState("");
   const [qrCodePath, setQrCodePath] = useState<string>("");
   const [upiId, setUpiId] = useState<string>("");
@@ -86,7 +86,7 @@ export default function PurchaseCredits() {
           });
         }
       }
-    } catch (error) {
+    } catch {
       // Silent fail - stick to defaults
       console.log("Using default pricing (admin config not accessible)");
     }
@@ -139,8 +139,9 @@ export default function PurchaseCredits() {
       }
       setSelectedPackage(null);
       setTransactionId("");
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || "Purchase failed");
+    } catch (error) {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || "Purchase failed");
     } finally {
       setLoading(false);
     }

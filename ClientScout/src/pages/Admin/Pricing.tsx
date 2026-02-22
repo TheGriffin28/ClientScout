@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import PageMeta from "../../components/common/PageMeta";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import { adminService } from "../../services/adminService";
 import { toast } from "react-hot-toast";
 import InputField from "../../components/form/input/InputField";
 import Button from "../../components/ui/button/Button";
-import { FaEdit, FaSave, FaPlus, FaTrash } from "react-icons/fa";
+import { FaSave } from "react-icons/fa";
 
 // Default configuration mirroring the hardcoded values in PurchaseCredits.tsx
 const DEFAULT_PRICING = {
@@ -93,7 +93,7 @@ export default function AdminPricing() {
       newBundles[index] = {
         ...newBundles[index],
         [parent]: {
-          ...newBundles[index][parent as keyof typeof newBundles[0]],
+          ...(newBundles[index][parent as keyof typeof newBundles[0]] as any),
           [child]: value
         }
       };

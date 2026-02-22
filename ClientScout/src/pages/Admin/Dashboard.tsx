@@ -7,7 +7,7 @@ import UsageChart from "./UsageChart";
 import UserGrowthChart from "./UserGrowthChart";
 import LeadStatusChart from "./LeadStatusChart";
 import { CardSkeleton, ChartSkeleton } from "../../components/ui/Skeleton";
-import { GroupIcon, BoxIconLine, BoltIcon, UserCircleIcon } from "../../icons";
+import { GroupIcon, BoxIconLine, BoltIcon } from "../../icons";
 import CardDataStats from "../../components/dashboard/CardDataStats";
 import { FaMoneyBillWave, FaShoppingCart, FaChartLine } from "react-icons/fa";
 
