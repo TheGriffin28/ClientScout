@@ -1,4 +1,4 @@
-import { ArrowRight, Play } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 
 const Hero = () => {
   return (
@@ -23,9 +23,6 @@ const Hero = () => {
               <a href="https://app.clientscout.xyz/signup" className="px-8 py-4 bg-blue-600 text-white rounded-full font-bold text-lg hover:bg-blue-700 transition-all hover:shadow-xl hover:-translate-y-1 flex items-center justify-center gap-2 shadow-lg shadow-blue-200">
                 Start Free Trial <ArrowRight size={20} />
               </a>
-              <a href="https://app.clientscout.xyz/signup" className="px-8 py-4 bg-white text-gray-700 border border-gray-200 rounded-full font-bold text-lg hover:bg-gray-50 hover:border-gray-300 transition-all flex items-center justify-center gap-2">
-                See How It Works <Play size={20} className="fill-current" />
-              </a>
             </div>
             
             <p className="text-sm text-gray-500 font-medium flex items-center justify-center lg:justify-start gap-2 mb-12">
@@ -48,7 +45,7 @@ const Hero = () => {
                       <div className="w-3 h-3 rounded-full bg-green-500"></div>
                     </div>
                     <div className="h-6 w-64 bg-gray-800 rounded flex items-center px-2 text-xs text-gray-400 border border-gray-700">
-                      <span className="text-blue-400 mr-2">🔍</span> Plumbers in New York
+                      <span className="text-blue-400 mr-2">🔍</span> Plumbers in Delhi
                     </div>
                   </div>
                   <div className="flex-1 p-4 grid grid-cols-12 gap-4 overflow-hidden">

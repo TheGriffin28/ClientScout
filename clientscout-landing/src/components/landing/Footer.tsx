@@ -7,9 +7,10 @@ const Footer = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
           <div className="col-span-1 md:col-span-1">
-            <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 mb-6 block">
-              ClientScout
-            </span>
+            <Link to="/" className="flex items-center gap-2 mb-6">
+              <img src="/logo.svg" alt="ClientScout Logo" className="h-14" />
+              
+            </Link>
             <p className="text-gray-500 mb-6 text-sm">
               ClientScout helps freelancers and agencies find local business leads from Google Maps, analyze them with AI, and convert them using built-in CRM and outreach tools.
             </p>
@@ -28,8 +29,8 @@ const Footer = () => {
             <h4 className="font-bold text-gray-900 mb-4">Support</h4>
             <ul className="space-y-2 text-gray-500 text-sm">
               <li><Link to="/contact" className="hover:text-blue-600 transition-colors">Contact</Link></li>
-              <li><a href="#privacy" className="hover:text-blue-600 transition-colors">Privacy Policy</a></li>
-              <li><a href="#terms" className="hover:text-blue-600 transition-colors">Terms & Conditions</a></li>
+              <li><Link to="/privacy" className="hover:text-blue-600 transition-colors">Privacy Policy</Link></li>
+              <li><Link to="/terms" className="hover:text-blue-600 transition-colors">Terms & Conditions</Link></li>
             </ul>
           </div>
           

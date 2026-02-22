@@ -13,7 +13,7 @@ const FeatureDiscovery = () => {
                  <div className="flex gap-2 mb-6">
                     <div className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 text-gray-600 flex items-center gap-2">
                         <Search size={18} className="text-gray-400" />
-                        Marketing agencies in London
+                        Marketing agencies in Mumbai
                     </div>
                     <button className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium">Search</button>
                  </div>
@@ -21,13 +21,13 @@ const FeatureDiscovery = () => {
                     {[1, 2, 3].map((i) => (
                         <div key={i} className="border border-gray-100 rounded-lg p-4 hover:bg-gray-50 transition-colors">
                             <div className="flex justify-between items-start mb-2">
-                                <h4 className="font-bold text-gray-900">Digital Growth Ltd</h4>
+                                <h4 className="font-bold text-gray-900">Digital Growth India</h4>
                                 <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full">4.8 ★</span>
                             </div>
                             <div className="text-sm text-gray-500 space-y-1">
-                                <div className="flex items-center gap-2"><MapPin size={14} /> London, UK</div>
-                                <div className="flex items-center gap-2"><Globe size={14} /> digitalgrowth.com</div>
-                                <div className="flex items-center gap-2 text-blue-600"><Mail size={14} /> contact@digitalgrowth.com</div>
+                                <div className="flex items-center gap-2"><MapPin size={14} /> Mumbai, India</div>
+                                <div className="flex items-center gap-2"><Globe size={14} /> digitalgrowth.in</div>
+                                <div className="flex items-center gap-2 text-blue-600"><Mail size={14} /> contact@digitalgrowth.in</div>
                             </div>
                         </div>
                     ))}
@@ -60,7 +60,7 @@ const FeatureDiscovery = () => {
             <div className="bg-gray-50 rounded-xl p-5 border border-gray-100">
                 <p className="text-sm font-semibold text-gray-500 mb-3 uppercase tracking-wider">Example Searches:</p>
                 <div className="flex flex-wrap gap-2">
-                    {["Plumbers in New York", "Dental clinics in Mumbai", "Marketing agencies in London"].map((tag, i) => (
+                    {["Plumbers in Delhi", "Dental clinics in Mumbai", "Marketing agencies in Bangalore"].map((tag, i) => (
                         <span key={i} className="bg-white border border-gray-200 px-3 py-1 rounded-full text-sm text-gray-600">
                             {tag}
                         </span>
