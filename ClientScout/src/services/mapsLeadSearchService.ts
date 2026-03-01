@@ -332,7 +332,8 @@ export const searchGoogleMapsLeads = async (
     })
   );
 
-  return enrichedResults;
+  // Sort by rating (lowest first) as requested by user
+  return [...enrichedResults].sort((a, b) => (a.rating ?? 0) - (b.rating ?? 0));
 };
 
 

@@ -211,9 +211,13 @@ export default function MapLeadSearch() {
   const hasSearched = searchState !== "idle" || results.length > 0;
   
   const filteredResults = useMemo(() => {
-    return hideWithWebsite
+    const base = hideWithWebsite
       ? results.filter((item) => !item.website)
       : results;
+    
+    // Sort by rating (lowest first)
+    // Businesses with no rating (undefined) are treated as 0 to show first
+    return [...base].sort((a, b) => (a.rating ?? 0) - (b.rating ?? 0));
   }, [results, hideWithWebsite]);
 
   const totalResults = filteredResults.length;
@@ -850,7 +854,7 @@ export default function MapLeadSearch() {
                         </div>
 
                         <div className="mt-6 flex flex-wrap gap-2">
-                          {item.rating && (
+                          {item.rating !== undefined && (
                             <Badge color="warning" size="sm" startIcon={<FaStar size={10} />}>
                               {item.rating.toFixed(1)}
                             </Badge>
