@@ -1,0 +1,13 @@
+
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
+import { getLeadById, updateLead, analyzeLead, generateEmailDraft, sendLeadEmail, generateWhatsAppDraft, generateLayout, logContact, Lead } from "../services/leadService";
+import StatusBadge from "../components/common/StatusBadge";
+import { FaEnvelope, FaWhatsapp, FaPhoneAlt, FaMagic, FaCopy, FaCheckCircle, FaCalendarPlus, FaRegPaperPlane, FaGlobe } from "react-icons/fa";
+import { openWhatsApp, openCall } from "../services/outreachService";
+import { Modal } from "../components/ui/modal";
+import { ProfileSkeleton } from "../components/ui/Skeleton";
+import { useUser } from "../context/UserContext";
+
+const LeadDetail = () => {

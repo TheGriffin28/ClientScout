@@ -106,7 +106,8 @@ export default function MapLeadSearch() {
   const [history, setHistory] = useState<SearchHistoryItem[]>([]);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showHistoryDropdown, setShowHistoryDropdown] = useState(false);
-  const [hideWithWebsite, setHideWithWebsite] = useState(false);
+  const [hideWithWebsite, setHideWithWebsite] = useState(true);
+  const [onlyHighOpportunity, setOnlyHighOpportunity] = useState(false);
   const [wishlist, setWishlist] = useState<MapsLeadResult[]>([]);
   const [showWishlist, setShowWishlist] = useState(false);
 
@@ -211,14 +212,14 @@ export default function MapLeadSearch() {
   const hasSearched = searchState !== "idle" || results.length > 0;
   
   const filteredResults = useMemo(() => {
-    const base = hideWithWebsite
+    const noWebsiteFiltered = hideWithWebsite
       ? results.filter((item) => !item.website)
       : results;
-    
-    // Sort by rating (lowest first)
-    // Businesses with no rating (undefined) are treated as 0 to show first
-    return [...base].sort((a, b) => (a.rating ?? 0) - (b.rating ?? 0));
-  }, [results, hideWithWebsite]);
+    const opportunityFiltered = onlyHighOpportunity
+      ? noWebsiteFiltered.filter((item) => item.tags.includes("High Opportunity"))
+      : noWebsiteFiltered;
+    return [...opportunityFiltered].sort((a, b) => b.leadScore - a.leadScore);
+  }, [results, hideWithWebsite, onlyHighOpportunity]);
 
   const totalResults = filteredResults.length;
 
@@ -357,7 +358,7 @@ export default function MapLeadSearch() {
         email: item.email,
         phone: item.phone,
         website: item.website,
-        industry: undefined,
+        industry: item.normalizedCategory,
         businessType: undefined,
         websiteObservations: undefined,
         painPoints: undefined,
@@ -367,7 +368,9 @@ export default function MapLeadSearch() {
         aiGeneratedAt: undefined,
         source: "Google Maps",
         status: "New",
-        notes: item.address,
+        notes: [item.address, `Category: ${item.normalizedCategory || item.category || "N/A"}`, `Lead score: ${item.leadScore}/10`]
+          .filter(Boolean)
+          .join(" | "),
         nextFollowUp: "",
         emailDraft: undefined,
         whatsappDraft: undefined,
@@ -769,7 +772,7 @@ export default function MapLeadSearch() {
               </div>
 
               {hasSearched && (
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
                   <label className="flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-400 cursor-pointer bg-white px-3 py-2 rounded-lg border border-gray-200 dark:bg-gray-800 dark:border-gray-700">
                     <input
                       type="checkbox"
@@ -777,7 +780,16 @@ export default function MapLeadSearch() {
                       onChange={(e) => setHideWithWebsite(e.target.checked)}
                       className="rounded text-blue-600"
                     />
-                    Hide with Website
+                    No Website Only
+                  </label>
+                  <label className="flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-400 cursor-pointer bg-white px-3 py-2 rounded-lg border border-gray-200 dark:bg-gray-800 dark:border-gray-700">
+                    <input
+                      type="checkbox"
+                      checked={onlyHighOpportunity}
+                      onChange={(e) => setOnlyHighOpportunity(e.target.checked)}
+                      className="rounded text-blue-600"
+                    />
+                    High Opportunity Only
                   </label>
                   
                   <div className="flex gap-1">
@@ -854,9 +866,19 @@ export default function MapLeadSearch() {
                         </div>
 
                         <div className="mt-6 flex flex-wrap gap-2">
+                          {(item.normalizedCategory || item.category) && (
+                            <Badge color="primary" size="sm">
+                              {item.normalizedCategory || item.category}
+                            </Badge>
+                          )}
                           {item.rating !== undefined && (
                             <Badge color="warning" size="sm" startIcon={<FaStar size={10} />}>
                               {item.rating.toFixed(1)}
+                            </Badge>
+                          )}
+                          {typeof item.reviewCount === "number" && (
+                            <Badge color="light" size="sm">
+                              {item.reviewCount} reviews
                             </Badge>
                           )}
                           {item.openingHours && (
@@ -864,7 +886,23 @@ export default function MapLeadSearch() {
                               Open Now
                             </Badge>
                           )}
+                          <Badge color={item.leadScore >= 7 ? "success" : item.leadScore >= 4 ? "warning" : "light"} size="sm">
+                            Score {item.leadScore}/10
+                          </Badge>
                         </div>
+
+                        {item.tags.length > 0 && (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {item.tags.map((tag) => (
+                              <span
+                                key={`${item.id}-${tag}`}
+                                className="rounded-full bg-blue-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-blue-700 dark:bg-blue-900/40 dark:text-blue-200"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
 
                         <div className="mt-6 space-y-3">
                           {item.phone && (
@@ -904,6 +942,21 @@ export default function MapLeadSearch() {
                             </div>
                           )}
                         </div>
+
+                        {item.reviews.length > 0 && (
+                          <div className="mt-4 rounded-lg border border-gray-100 bg-gray-50 p-3 dark:border-gray-800 dark:bg-gray-900/40">
+                            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">
+                              Review Highlights
+                            </p>
+                            <ul className="space-y-1.5 text-xs text-gray-600 dark:text-gray-300">
+                              {item.reviews.slice(0, 3).map((review, idx) => (
+                                <li key={`${item.id}-review-${idx}`} className="line-clamp-2">
+                                  "{review}"
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
                       </div>
 
                       <div className="mt-auto border-t border-gray-100 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-white/[0.01]">

@@ -13,6 +13,7 @@ import FollowUps from "./pages/followups";
 import Settings from "./pages/settings";
 import LeadDetail from "./pages/LeadDetail";
 import MapLeadSearch from "./pages/MapLeadSearch";
+import WebsitePreviewPage from "./pages/WebsitePreviewPage";
 
 import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
@@ -42,6 +43,7 @@ export default function App() {
         <Route path="/verify-email" element={<VerifyEmailOTP />} />
         <Route path="/verify-2fa" element={<VerifyTwoFactor />} />
 
+        <Route path="/preview" element={<WebsitePreviewPage />} />
         {/* Dashboard Layout */}
         <Route element={<AppLayout />}>
           <Route index path="/" element={<Home />} />

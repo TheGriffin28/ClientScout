@@ -1,3 +1,4 @@
+
 import { useRef, useEffect } from "react";
 
 interface ModalProps {
@@ -5,9 +6,9 @@ interface ModalProps {
   onClose: () => void;
   className?: string;
   children: React.ReactNode;
-  showCloseButton?: boolean; // New prop to control close button visibility
-  isFullscreen?: boolean; // Default to false for backwards compatibility
-  title?: string; // Add title prop
+  showCloseButton?: boolean;
+  isFullscreen?: boolean;
+  title?: string;
 }
 
 export const Modal: React.FC<ModalProps> = ({
@@ -15,7 +16,7 @@ export const Modal: React.FC<ModalProps> = ({
   onClose,
   children,
   className,
-  showCloseButton = true, // Default to true for backwards compatibility
+  showCloseButton = true,
   isFullscreen = false,
   title,
 }) => {
@@ -53,10 +54,10 @@ export const Modal: React.FC<ModalProps> = ({
 
   const contentClasses = isFullscreen
     ? "w-full h-full"
-    : "relative w-full rounded-3xl bg-white dark:bg-gray-800 p-6 shadow-xl max-w-2xl mx-4";
+    : "relative w-full rounded-3xl bg-white dark:bg-gray-800 p-6 shadow-xl max-w-2xl mx-4 my-8";
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center overflow-y-auto z-50">
+    <div className="fixed inset-0 flex items-start justify-center z-[200] overflow-y-auto">
       {!isFullscreen && (
         <div
           className="fixed inset-0 h-full w-full bg-gray-900/50 backdrop-blur-sm transition-opacity"

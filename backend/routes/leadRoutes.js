@@ -12,6 +12,7 @@ import {
   generateEmail,
   sendLeadEmail,
   generateWhatsApp,
+  generateLayout,
   logContact,
   trackMapSearchUsage
 } from "../controllers/leadController.js";
@@ -33,6 +34,7 @@ router.post("/:id/analyze", protect, analyzeLead);
 router.post("/:id/generate-email", protect, generateEmail);
 router.post("/:id/send-email", protect, sendLeadEmail);
 router.post("/:id/generate-whatsapp", protect, generateWhatsApp);
+router.post("/:id/generate-layout", protect, generateLayout);
 router.post("/:id/log-contact", protect, logContact);
 
 router.route("/:id")

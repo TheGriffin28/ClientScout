@@ -1,14 +1,13 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import { getLeadById, updateLead, analyzeLead, generateEmailDraft, sendLeadEmail, generateWhatsAppDraft, logContact, Lead } from "../services/leadService";
+import { getLeadById, updateLead, analyzeLead, generateEmailDraft, sendLeadEmail, generateWhatsAppDraft, generateLayout, logContact, Lead } from "../services/leadService";
 import StatusBadge from "../components/common/StatusBadge";
-import { FaEnvelope, FaWhatsapp, FaPhoneAlt, FaMagic, FaCopy, FaCheckCircle, FaCalendarPlus, FaRegPaperPlane, FaSync } from "react-icons/fa";
+import { FaEnvelope, FaWhatsapp, FaPhoneAlt, FaMagic, FaCopy, FaCheckCircle, FaCalendarPlus, FaRegPaperPlane, FaSync, FaGlobe } from "react-icons/fa";
 import { openWhatsApp, openCall } from "../services/outreachService";
 import { Modal } from "../components/ui/modal";
 import { ProfileSkeleton } from "../components/ui/Skeleton";
 import { useUser } from "../context/UserContext";
-
 const LeadDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -19,6 +18,7 @@ const LeadDetail = () => {
   const [generatingEmail, setGeneratingEmail] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [generatingWhatsApp, setGeneratingWhatsApp] = useState(false);
+  const [generatingLayout, setGeneratingLayout] = useState(false);
   const [notes, setNotes] = useState("");
   const [isEditingNotes, setIsEditingNotes] = useState(false);
 
@@ -134,6 +134,56 @@ const LeadDetail = () => {
       toast.error(error.response?.data?.message || "Error generating WhatsApp draft.");
     } finally {
       setGeneratingWhatsApp(false);
+    }
+  };
+
+  const handleGenerateLayout = async () => {
+    if (!id) return;
+    try {
+      setGeneratingLayout(true);
+      const updatedLead = await generateLayout(id);
+      setLead(updatedLead);
+      toast.success("Website layout generated!");
+      const previewData = {
+        layout: updatedLead.generatedLayout,
+        businessName: updatedLead.businessName,
+        industry: updatedLead.industry,
+        businessType: updatedLead.businessType,
+        leadId: id,
+      };
+      localStorage.setItem("clientScout_preview_data", JSON.stringify(previewData));
+      window.open("/preview", "_blank", "noopener,noreferrer");
+      refreshUser();
+    } catch (error: any) {
+      console.error("Error generating layout:", error);
+      toast.error(error.response?.data?.message || "Error generating website layout.");
+    } finally {
+      setGeneratingLayout(false);
+    }
+  };
+
+  const handleChangeTemplate = async () => {
+    if (!id || !lead?.generatedLayout) return;
+    const templates: Array<"modern-business" | "premium-dark" | "local-bright" | "minimal-fast"> = [
+      "modern-business",
+      "premium-dark",
+      "local-bright",
+      "minimal-fast",
+    ];
+    const currentIndex = templates.indexOf(lead.generatedLayout.templateKey);
+    const nextTemplate = templates[(currentIndex + 1) % templates.length];
+    try {
+      const updatedLead = await updateLead(id, {
+        generatedLayout: {
+          ...lead.generatedLayout,
+          templateKey: nextTemplate,
+        },
+      });
+      setLead(updatedLead);
+      toast.success("Template updated!");
+    } catch (error) {
+      console.error("Error changing template:", error);
+      toast.error("Failed to change template.");
     }
   };
 
@@ -727,6 +777,71 @@ const LeadDetail = () => {
                 <p className="rounded-lg bg-gray-50 p-3 text-sm leading-relaxed text-gray-800 dark:bg-gray-700 dark:text-white">
                   {lead.aiSummary || "No AI summary available yet."}
                 </p>
+                
+                <div className="flex flex-wrap gap-3 pt-2">
+                  {!lead.generatedLayout ? (
+                    <button
+                      onClick={handleGenerateLayout}
+                      disabled={generatingLayout}
+                      className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-2 text-sm font-medium text-white shadow-md transition-all hover:opacity-90 disabled:opacity-50"
+                    >
+                      <FaGlobe className={generatingLayout ? "animate-spin" : ""} />
+                      {generatingLayout ? "Designing..." : "Generate Website Preview"}
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => {
+                          const previewData = {
+                            layout: lead.generatedLayout,
+                            businessName: lead.businessName,
+                            industry: lead.industry,
+                            businessType: lead.businessType,
+                            leadId: id,
+                          };
+                          localStorage.setItem("clientScout_preview_data", JSON.stringify(previewData));
+                          window.open("/preview", "_blank", "noopener,noreferrer");
+                        }}
+                        className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-2 text-sm font-medium text-white shadow-md transition-all hover:opacity-90"
+                      >
+                        <FaGlobe />
+                        View Website Preview
+                      </button>
+                      <button
+                        onClick={handleGenerateLayout}
+                        disabled={generatingLayout}
+                        className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+                      >
+                        <FaSync className={generatingLayout ? "animate-spin" : ""} />
+                        {generatingLayout ? "Regenerating..." : "Regenerate Website Preview"}
+                      </button>
+                      <button
+                        onClick={handleChangeTemplate}
+                        disabled={generatingLayout}
+                        className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+                      >
+                        Change Template
+                      </button>
+                      <button
+                        onClick={() => {
+                          const previewData = {
+                            layout: lead.generatedLayout,
+                            businessName: lead.businessName,
+                            industry: lead.industry,
+                            businessType: lead.businessType,
+                            leadId: id,
+                          };
+                          localStorage.setItem("clientScout_preview_data", JSON.stringify(previewData));
+                          window.open("/preview", "_blank", "noopener,noreferrer");
+                        }}
+                        className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+                      >
+                        <FaGlobe />
+                        Open Preview in New Tab
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
 
               <div className="space-y-2">

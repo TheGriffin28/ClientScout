@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import toast from "react-hot-toast";
-import { getLeads, createLead, updateLead, deleteLead, Lead, LeadFormData } from "../services/leadService";
+import { getLeads, createLead, updateLead, deleteLead, Lead, LeadFormData, generateLayout } from "../services/leadService";
 import StatusBadge from "../components/common/StatusBadge";
 import {
   FaSearch,
@@ -10,7 +10,8 @@ import {
   FaEnvelope,
   FaWhatsapp,
   FaTrash,
-  FaEdit
+  FaEdit,
+  FaGlobe
 } from "react-icons/fa";
 import { openCall } from "../services/outreachService";
 import { TableSkeleton } from "../components/ui/Skeleton";
@@ -40,6 +41,7 @@ const Leads = () => {
   const [outreachLead, setOutreachLead] = useState<Lead | null>(null);
   const [isEmailOpen, setIsEmailOpen] = useState(false);
   const [isWhatsAppOpen, setIsWhatsAppOpen] = useState(false);
+  const [generatingLeadId, setGeneratingLeadId] = useState<string | null>(null);
 
   // Search Debounce
   const [searchInput, setSearchInput] = useState(searchQuery);
@@ -136,6 +138,31 @@ const Leads = () => {
       fetchLeads(currentPage, searchQuery);
     } catch (error) {
       toast.error("Failed to delete lead");
+    }
+  };
+
+  const handleGenerateLayout = async (lead: Lead) => {
+    setGeneratingLeadId(lead._id);
+    try {
+      const updatedLead = await generateLayout(lead._id);
+      toast.success("Website layout generated!");
+      
+      const previewData = {
+        layout: updatedLead.generatedLayout,
+        businessName: updatedLead.businessName,
+        industry: updatedLead.industry,
+        businessType: updatedLead.businessType,
+        leadId: updatedLead._id,
+      };
+      localStorage.setItem("clientScout_preview_data", JSON.stringify(previewData));
+      window.open("/preview", "_blank", "noopener,noreferrer");
+      
+      fetchLeads(currentPage, searchQuery);
+    } catch (error) {
+      console.error("Error generating website preview:", error);
+      toast.error("Error generating website preview");
+    } finally {
+      setGeneratingLeadId(null);
     }
   };
 
@@ -313,6 +340,34 @@ const Leads = () => {
                               <FaPhoneAlt size={14} />
                             </button>
                           )}
+                          {lead.generatedLayout ? (
+                            <button 
+                              onClick={() => {
+                                const previewData = {
+                                  layout: lead.generatedLayout,
+                                  businessName: lead.businessName,
+                                  industry: lead.industry,
+                                  businessType: lead.businessType,
+                                  leadId: lead._id,
+                                };
+                                localStorage.setItem("clientScout_preview_data", JSON.stringify(previewData));
+                                window.open("/preview", "_blank", "noopener,noreferrer");
+                              }}
+                              className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
+                              title="Open Preview"
+                            >
+                              <FaGlobe size={14} />
+                            </button>
+                          ) : (
+                            <button 
+                              onClick={() => handleGenerateLayout(lead)}
+                              disabled={generatingLeadId === lead._id}
+                              className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors disabled:opacity-50"
+                              title="Generate Website Preview"
+                            >
+                              <FaGlobe className={generatingLeadId === lead._id ? "animate-spin" : ""} size={14} />
+                            </button>
+                          )}
                           <div className="w-px h-4 bg-gray-200 dark:bg-gray-700 mx-1"></div>
                           <button 
                             onClick={() => { setEditingLead(lead); setIsAddEditOpen(true); }}
@@ -422,7 +477,34 @@ const Leads = () => {
                         </button>
                       )}
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 items-center">
+                      {lead.generatedLayout ? (
+                        <button 
+                          onClick={() => {
+                            const previewData = {
+                              layout: lead.generatedLayout,
+                              businessName: lead.businessName,
+                              industry: lead.industry,
+                              businessType: lead.businessType,
+                              leadId: lead._id,
+                            };
+                            localStorage.setItem("clientScout_preview_data", JSON.stringify(previewData));
+                            window.open("/preview", "_blank", "noopener,noreferrer");
+                          }}
+                          className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded transition-colors"
+                        >
+                          <FaGlobe size={14} /> Preview
+                        </button>
+                      ) : (
+                        <button 
+                          onClick={() => handleGenerateLayout(lead)}
+                          disabled={generatingLeadId === lead._id}
+                          className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded transition-colors disabled:opacity-50"
+                        >
+                          <FaGlobe className={generatingLeadId === lead._id ? "animate-spin" : ""} size={14} /> 
+                          {generatingLeadId === lead._id ? "Generating..." : "Generate"}
+                        </button>
+                      )}
                       <button 
                         onClick={() => { setEditingLead(lead); setIsAddEditOpen(true); }}
                         className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"

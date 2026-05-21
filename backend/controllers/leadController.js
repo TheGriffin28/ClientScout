@@ -2,7 +2,7 @@ import Lead from "../models/Lead.js";
 import User from "../models/User.js";
 import Config from "../models/Config.js";
 import mongoose from "mongoose";
-import { analyzeWebsite } from "../services/aiService.js";
+import { analyzeWebsite, generateEmailDraft, generateWhatsAppDraft, generateWebsiteLayout } from "../services/aiService.js";
 import { sendEmail } from "../services/emailService.js";
 import { logAdminAction } from "../utils/logger.js";
 
@@ -383,7 +383,6 @@ export const generateEmail = async (req, res) => {
   }
 
   try {
-    const { generateEmailDraft } = await import("../services/aiService.js");
     const emailDraft = await generateEmailDraft(
       lead.businessName,
       lead.industry,
@@ -579,7 +578,6 @@ export const generateWhatsApp = async (req, res) => {
   }
 
   try {
-    const { generateWhatsAppDraft } = await import("../services/aiService.js");
     const whatsappMsg = await generateWhatsAppDraft(
       lead.businessName,
       lead.industry,
@@ -661,5 +659,139 @@ export const trackMapSearchUsage = async (req, res) => {
   } catch (error) {
     console.error("Error tracking map search usage:", error);
     res.status(500).json({ message: "Failed to track map search usage" });
+  }
+};
+
+/* GENERATE WEBSITE LAYOUT */
+export const generateLayout = async (req, res) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    return res.status(400).json({ message: "Invalid lead ID format" });
+  }
+
+  const lead = await Lead.findById(req.params.id);
+
+  if (!lead || lead.user.toString() !== req.user._id.toString()) {
+    return res.status(404).json({ message: "Lead not found" });
+  }
+
+  // Check AI usage limits
+  const user = await User.findById(req.user._id);
+  const today = new Date();
+  const lastUsed = user.lastAIUsedAt ? new Date(user.lastAIUsedAt) : null;
+
+  // Reset if new month
+  if (lastUsed && (lastUsed.getMonth() !== today.getMonth() || lastUsed.getFullYear() !== today.getFullYear())) {
+    user.aiUsageCount = 0;
+  }
+
+  const monthlyLimit = await getEffectiveLimit(user, "maxMonthlyAICallsPerUser", "maxMonthlyAICallsPerUser", 100);
+  const extraCredits = user.extraAICallsCredits || 0;
+
+  if (user.aiUsageCount >= monthlyLimit && extraCredits <= 0) {
+    return res.status(403).json({ message: `Monthly AI call limit (${monthlyLimit}) exceeded.` });
+  }
+
+  const pickTemplateKey = (industry, businessType) => {
+    const source = `${industry || ""} ${businessType || ""}`.toLowerCase();
+    if (source.includes("clinic") || source.includes("dent") || source.includes("salon")) {
+      return "premium-dark";
+    }
+    if (source.includes("cafe") || source.includes("restaurant") || source.includes("local")) {
+      return "local-bright";
+    }
+    if (source.includes("agency") || source.includes("saas") || source.includes("tech")) {
+      return "modern-business";
+    }
+    return "minimal-fast";
+  };
+
+  const mapCategoryServices = (industry) => {
+    const category = (industry || "").toLowerCase();
+    if (category.includes("salon")) return ["Haircut & Styling", "Skin & Facial Care", "Bridal & Event Makeover"];
+    if (category.includes("gym") || category.includes("fitness")) return ["Personal Training", "Group Fitness Programs", "Membership Plans"];
+    if (category.includes("dent")) return ["Dental Cleaning", "Teeth Whitening", "Preventive Checkups"];
+    if (category.includes("cafe") || category.includes("restaurant")) return ["Dine-In Experience", "Online Ordering", "Event Catering"];
+    return ["Consultation", "Core Service Delivery", "Ongoing Support"];
+  };
+
+  try {
+    const content = await generateWebsiteLayout(
+      lead.businessName,
+      lead.industry,
+      lead.businessType,
+      lead.painPoints,
+      lead.aiSummary
+    );
+
+    const fallbackServices = mapCategoryServices(lead.industry).map((name) => ({
+      name,
+      description: `${name} tailored for ${lead.businessName}.`,
+    }));
+    const templateKey = pickTemplateKey(lead.industry, lead.businessType);
+    const safeContent = {
+      hero: content.hero || {
+        headline: `${lead.businessName} - Trusted Local Service`,
+        tagline: "Professional service with local trust and fast response.",
+        primaryCta: "Call Now",
+        secondaryCta: "Get Free Quote",
+      },
+      about: content.about || {
+        title: `About ${lead.businessName}`,
+        description: `${lead.businessName} helps customers with reliable service and a customer-first experience.`,
+      },
+      services: Array.isArray(content.services) && content.services.length > 0 ? content.services : fallbackServices,
+      testimonials: Array.isArray(content.testimonials) && content.testimonials.length > 0 ? content.testimonials : [
+        { name: "Happy Customer", quote: "Great service and very professional team." },
+        { name: "Local Client", quote: "Reliable, friendly, and easy to work with." },
+      ],
+      contact: {
+        phone: lead.phone || content.contact?.phone || "Phone available on request",
+        address: lead.notes || content.contact?.address || "Local service area",
+        ctaText: content.contact?.ctaText || "Call or WhatsApp Us",
+      },
+    };
+
+    lead.generatedLayout = {
+      templateKey,
+      content: safeContent,
+      pitchMessage:
+        content.pitchMessage ||
+        `Hi ${lead.businessName} team, we noticed your business could benefit from a stronger online presence. We created a ready website preview for you. Would you like us to make it live?`,
+      previewUrl: `https://preview.clientscout.site/${lead._id}`,
+      generatedAt: new Date()
+    };
+    if (lead.status === "New") {
+      lead.status = "FollowUp";
+    }
+    await lead.save();
+
+    // Increment AI Usage Count and store lastAIUsedAt
+    if (user.aiUsageCount < monthlyLimit) {
+      user.aiUsageCount += 1;
+    } else {
+      user.extraAICallsCredits -= 1;
+    }
+    user.lastAIUsedAt = new Date();
+    await user.save();
+
+    // Log successful AI Action
+    await logAdminAction({
+      action: "AI_ACTION",
+      userId: req.user._id,
+      details: { leadId: req.params.id, action: "GENERATE_LAYOUT", businessName: lead.businessName }
+    });
+
+    res.json(lead);
+  } catch (error) {
+    console.error("Layout generation failed:", error);
+    
+    // Log AI Error
+    await logAdminAction({
+      action: "AI_ERROR",
+      userId: req.user._id,
+      details: `Layout generation failed for lead ${req.params.id}: ${error.message}`
+    });
+
+    res.status(500).json({ message: "Failed to generate website layout", error: error.message });
   }
 };

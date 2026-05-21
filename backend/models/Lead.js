@@ -36,6 +36,46 @@ const leadSchema = new mongoose.Schema(
       generatedAt: Date
     },
 
+    generatedLayout: {
+      templateKey: {
+        type: String,
+        enum: ["modern-business", "premium-dark", "local-bright", "minimal-fast"],
+        default: "modern-business"
+      },
+      content: {
+        hero: {
+          headline: String,
+          tagline: String,
+          primaryCta: String,
+          secondaryCta: String
+        },
+        about: {
+          title: String,
+          description: String
+        },
+        services: [
+          {
+            name: String,
+            description: String
+          }
+        ],
+        testimonials: [
+          {
+            name: String,
+            quote: String
+          }
+        ],
+        contact: {
+          phone: String,
+          address: String,
+          ctaText: String
+        }
+      },
+      pitchMessage: String,
+      previewUrl: String,
+      generatedAt: Date
+    },
+
     source: {
       type: String,
       default: "Manual"

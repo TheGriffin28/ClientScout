@@ -28,6 +28,37 @@ export interface Lead {
     body: string;
     generatedAt: string;
   };
+  generatedLayout?: {
+    templateKey: "modern-business" | "premium-dark" | "local-bright" | "minimal-fast";
+    content: {
+      hero: {
+        headline: string;
+        tagline: string;
+        primaryCta: string;
+        secondaryCta: string;
+      };
+      about: {
+        title: string;
+        description: string;
+      };
+      services: Array<{
+        name: string;
+        description: string;
+      }>;
+      testimonials: Array<{
+        name: string;
+        quote: string;
+      }>;
+      contact: {
+        phone: string;
+        address: string;
+        ctaText: string;
+      };
+    };
+    pitchMessage?: string;
+    previewUrl?: string;
+    generatedAt: string;
+  };
   lastContactedAt?: string;
   source?: string;
   status: "New" | "Contacted" | "FollowUp" | "Interested" | "Converted" | "Lost";
@@ -68,6 +99,7 @@ export interface LeadFormData {
   whatsappDraft?: {
     body: string;
   };
+  generatedLayout?: Lead["generatedLayout"];
 }
 
 export interface PaginatedLeads {
@@ -133,6 +165,11 @@ export const sendLeadEmail = async (id: string, subject: string, body: string): 
 
 export const generateWhatsAppDraft = async (id: string): Promise<Lead> => {
   const res = await api.post(`/leads/${id}/generate-whatsapp`);
+  return res.data;
+};
+
+export const generateLayout = async (id: string): Promise<Lead> => {
+  const res = await api.post(`/leads/${id}/generate-layout`);
   return res.data;
 };
 

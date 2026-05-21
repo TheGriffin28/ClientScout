@@ -174,3 +174,69 @@ export const generateWhatsAppDraft = async (businessName, industry, contactName,
     throw new Error("Failed to generate WhatsApp draft");
   }
 };
+
+export const generateWebsiteLayout = async (businessName, industry, businessType, painPoints, aiSummary) => {
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+
+    const prompt = `
+      You are a senior conversion copywriter for local businesses.
+      Generate website CONTENT ONLY. Do not generate CSS, HTML, or layout instructions.
+ 
+      Business Name: ${businessName} 
+      Industry: ${industry || "General"} 
+      Business Type: ${businessType || "N/A"} 
+      Pain Points: ${painPoints?.join(", ") || "N/A"} 
+      Strategic Insight: ${aiSummary || "N/A"} 
+ 
+      Rules:
+      - Keep writing concrete and non-generic.
+      - Keep testimonials realistic, short, and trust-building.
+      - Services must match the business category.
+      - Output concise sales-ready copy.
+ 
+      Return ONLY valid JSON. Do not include markdown or extra text. 
+ 
+      The JSON object must follow this exact structure: 
+ 
+      { 
+        "hero": {
+          "headline": "Benefit-driven headline with business name",
+          "tagline": "One short supporting line",
+          "primaryCta": "Call Now / Book Now",
+          "secondaryCta": "Get Free Quote / WhatsApp Us"
+        },
+        "about": {
+          "title": "About heading",
+          "description": "80-120 words trust-building description"
+        }, 
+        "services": [
+          { "name": "Service 1", "description": "1-2 lines" },
+          { "name": "Service 2", "description": "1-2 lines" },
+          { "name": "Service 3", "description": "1-2 lines" }
+        ],
+        "testimonials": [
+          { "name": "Customer 1", "quote": "Natural positive review rewrite." },
+          { "name": "Customer 2", "quote": "Natural positive review rewrite." },
+          { "name": "Customer 3", "quote": "Natural positive review rewrite." }
+        ],
+        "contact": {
+          "phone": "Use placeholder if not known",
+          "address": "Use placeholder if not known",
+          "ctaText": "Call / WhatsApp CTA"
+        },
+        "pitchMessage": "A short outreach message saying we created this website preview and asking if they want to make it live."
+      } 
+    `;
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+
+    const jsonString = text.replace(/```json/g, "").replace(/```/g, "").trim();
+    return JSON.parse(jsonString);
+  } catch (error) {
+    console.error("Error generating website layout:", error);
+    throw new Error("Failed to generate website layout");
+  }
+};
