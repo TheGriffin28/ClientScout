@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import { getLeads, createLead, updateLead, deleteLead, Lead, LeadFormData, generateLayout } from "../services/leadService";
+import { suggestLayoutFor } from "../services/templateEngine";
 import StatusBadge from "../components/common/StatusBadge";
 import {
   FaSearch,
@@ -145,10 +146,24 @@ const Leads = () => {
     setGeneratingLeadId(lead._id);
     try {
       const updatedLead = await generateLayout(lead._id);
+      const suggestion = suggestLayoutFor(updatedLead.industry, updatedLead.businessType);
+      let layoutToUse = updatedLead.generatedLayout;
+      if (layoutToUse) {
+        const suggestedLayout = {
+          ...layoutToUse,
+          templateKey: layoutToUse.templateKey || suggestion.templateKey,
+          themeKey: layoutToUse.themeKey || suggestion.themeKey,
+        };
+        layoutToUse = suggestedLayout;
+        if (!layoutToUse.themeKey) {
+          await updateLead(lead._id, { generatedLayout: suggestedLayout });
+        }
+      }
+
       toast.success("Website layout generated!");
       
       const previewData = {
-        layout: updatedLead.generatedLayout,
+        layout: layoutToUse,
         businessName: updatedLead.businessName,
         industry: updatedLead.industry,
         businessType: updatedLead.businessType,

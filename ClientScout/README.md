@@ -42,6 +42,21 @@ control panels. It's built on:
 
 ## Installation
 
+### Testing
+
+Run unit tests for the frontend with:
+
+```bash
+npm run test
+```
+
+Run tests in watch mode with:
+
+```bash
+npm run test:watch
+```
+
+
 ### Prerequisites
 
 To get started with TailAdmin, ensure you have the following prerequisites installed and set up:

@@ -1,4 +1,42 @@
 import api from "./api";
+import { ThemeKey, LegacyTemplateKey } from "./templateEngine";
+
+export interface LayoutVersion {
+  id: string;
+  name: string;
+  description: string;
+  templateKey: LegacyTemplateKey;
+  themeKey?: ThemeKey;
+  content: {
+    hero: {
+      headline: string;
+      tagline: string;
+      primaryCta: string;
+      secondaryCta: string;
+    };
+    about: {
+      title: string;
+      description: string;
+    };
+    services: Array<{
+      name: string;
+      description: string;
+    }>;
+    testimonials: Array<{
+      name: string;
+      quote: string;
+    }>;
+    contact: {
+      phone: string;
+      address: string;
+      ctaText: string;
+    };
+  };
+  pitchMessage?: string;
+  previewUrl?: string;
+  generatedAt: string;
+  isRecommended: boolean;
+}
 
 export interface Lead {
   _id: string;
@@ -29,7 +67,8 @@ export interface Lead {
     generatedAt: string;
   };
   generatedLayout?: {
-    templateKey: "modern-business" | "premium-dark" | "local-bright" | "minimal-fast";
+    templateKey: LegacyTemplateKey;
+    themeKey?: ThemeKey;
     content: {
       hero: {
         headline: string;
@@ -59,6 +98,14 @@ export interface Lead {
     previewUrl?: string;
     generatedAt: string;
   };
+  layoutVersions?: LayoutVersion[];
+  selectedLayoutId?: string;
+  clientApproved?: boolean;
+  clientApprovedAt?: string;
+  clientApprovedLayoutId?: string;
+  clientApprovedLayoutName?: string;
+  clientChangeRequest?: string;
+  clientChangeRequestedAt?: string;
   lastContactedAt?: string;
   source?: string;
   status: "New" | "Contacted" | "FollowUp" | "Interested" | "Converted" | "Lost";
@@ -95,11 +142,21 @@ export interface LeadFormData {
   emailDraft?: {
     subject: string;
     body: string;
+    generatedAt: string;
   };
   whatsappDraft?: {
     body: string;
+    generatedAt: string;
   };
   generatedLayout?: Lead["generatedLayout"];
+  layoutVersions?: Lead["layoutVersions"];
+  selectedLayoutId?: Lead["selectedLayoutId"];
+  clientApproved?: boolean;
+  clientApprovedAt?: string;
+  clientApprovedLayoutId?: string;
+  clientApprovedLayoutName?: string;
+  clientChangeRequest?: string;
+  clientChangeRequestedAt?: string;
 }
 
 export interface PaginatedLeads {
