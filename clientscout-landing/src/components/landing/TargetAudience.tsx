@@ -14,15 +14,18 @@ const TargetAudience = () => {
   return (
     <section className="py-24 bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <h2 className="text-3xl font-extrabold text-gray-900 mb-12">
+        <h2 className="text-3xl font-extrabold text-slate-900 mb-4">
           ClientScout is perfect for:
         </h2>
+        <p className="text-slate-600 mb-12 max-w-xl mx-auto">
+          Especially if you sell websites, SEO, or marketing to local businesses.
+        </p>
         
         <div className="flex flex-wrap justify-center gap-4 md:gap-6">
           {audience.map((item, index) => (
-            <div key={index} className="flex items-center gap-3 bg-white px-6 py-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all hover:-translate-y-1">
-              <div className="text-blue-600">{item.icon}</div>
-              <span className="font-semibold text-gray-800">{item.label}</span>
+            <div key={index} className="flex items-center gap-3 bg-white px-6 py-4 rounded-xl shadow-sm border border-slate-100 hover:border-teal-200 hover:shadow-md transition-all hover:-translate-y-1">
+              <div className="text-teal-600">{item.icon}</div>
+              <span className="font-semibold text-slate-800">{item.label}</span>
             </div>
           ))}
         </div>

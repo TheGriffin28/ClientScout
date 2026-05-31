@@ -1,6 +1,8 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Navbar from './components/landing/Navbar';
 import Footer from './components/landing/Footer';
+import BackToTop from './components/landing/BackToTop';
+import ScrollToTop from './components/landing/ScrollToTop';
 import Home from './pages/Home';
 import Pricing from './pages/Pricing';
 import Contact from './pages/Contact';
@@ -11,6 +13,7 @@ function App() {
   return (
     <Router>
       <div className="min-h-screen bg-white font-sans text-gray-900 selection:bg-blue-100 selection:text-blue-900">
+        <ScrollToTop />
         <Navbar />
         <Routes>
           <Route path="/" element={<Home />} />
@@ -20,6 +23,7 @@ function App() {
           <Route path="/terms" element={<TermsOfService />} />
         </Routes>
         <Footer />
+        <BackToTop />
       </div>
     </Router>
   );

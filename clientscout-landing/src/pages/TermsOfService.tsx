@@ -1,4 +1,12 @@
 import { useEffect } from 'react';
+import LegalPageLayout from '../components/landing/LegalPageLayout';
+
+const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+  <section>
+    <h2 className="text-xl font-bold text-slate-900 mb-3">{title}</h2>
+    {children}
+  </section>
+);
 
 const TermsOfService = () => {
   useEffect(() => {
@@ -6,63 +14,131 @@ const TermsOfService = () => {
   }, []);
 
   return (
-    <div className="pt-24 pb-16 min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 bg-white p-8 md:p-12 rounded-2xl shadow-sm border border-gray-100">
-        <h1 className="text-4xl font-bold text-gray-900 mb-8">Terms & Conditions</h1>
-        
-        <div className="prose prose-blue max-w-none text-gray-600">
-          <p className="mb-4">Last updated: {new Date().toLocaleDateString()}</p>
-          
-          <h2 className="text-2xl font-bold text-gray-900 mt-8 mb-4">1. Agreement to Terms</h2>
-          <p className="mb-4">
-            By accessing or using ClientScout, you agree to be bound by these Terms and Conditions. If you disagree with any part of the terms, you may not access the service.
-          </p>
+    <LegalPageLayout title="Terms & Conditions" lastUpdated="May 31, 2026">
+      <Section title="1. Agreement to terms">
+        <p>
+          By accessing or using ClientScout (the website, web application, and related services), you agree to these Terms
+          &amp; Conditions. If you do not agree, do not use the service.
+        </p>
+      </Section>
 
-          <h2 className="text-2xl font-bold text-gray-900 mt-8 mb-4">2. Use License</h2>
-          <p className="mb-4">
-            Permission is granted to temporarily download one copy of the materials (information or software) on ClientScout's website for personal, non-commercial transitory viewing only. 
-            This is the grant of a license, not a transfer of title, and under this license you may not:
-          </p>
-          <ul className="list-disc pl-6 mb-4 space-y-2">
-            <li>modify or copy the materials;</li>
-            <li>use the materials for any commercial purpose, or for any public display (commercial or non-commercial);</li>
-            <li>attempt to decompile or reverse engineer any software contained on ClientScout's website;</li>
-            <li>remove any copyright or other proprietary notations from the materials; or</li>
-            <li>transfer the materials to another person or "mirror" the materials on any other server.</li>
-          </ul>
+      <Section title="2. Description of service">
+        <p>
+          ClientScout provides tools for lead discovery (including Google Maps-based search), CRM, AI-powered analysis,
+          website layout generation, design sharing, and outreach features. Features and availability may change as we
+          improve the product.
+        </p>
+      </Section>
 
-          <h2 className="text-2xl font-bold text-gray-900 mt-8 mb-4">3. Disclaimer</h2>
-          <p className="mb-4">
-            The materials on ClientScout's website are provided on an 'as is' basis. ClientScout makes no warranties, expressed or implied, and hereby disclaims and negates all other warranties including, without limitation, implied warranties or conditions of merchantability, fitness for a particular purpose, or non-infringement of intellectual property or other violation of rights.
-          </p>
+      <Section title="3. Account registration">
+        <ul className="list-disc pl-6 space-y-2">
+          <li>You must provide accurate registration information and keep your account secure.</li>
+          <li>You are responsible for all activity under your account.</li>
+          <li>You must be at least 18 years old to use the service.</li>
+          <li>One person or legal entity may not maintain multiple free-trial accounts to abuse limits.</li>
+        </ul>
+      </Section>
 
-          <h2 className="text-2xl font-bold text-gray-900 mt-8 mb-4">4. Limitations</h2>
-          <p className="mb-4">
-            In no event shall ClientScout or its suppliers be liable for any damages (including, without limitation, damages for loss of data or profit, or due to business interruption) arising out of the use or inability to use the materials on ClientScout's website, even if ClientScout or a ClientScout authorized representative has been notified orally or in writing of the possibility of such damage.
-          </p>
+      <Section title="4. Credits and payments">
+        <p className="mb-3">
+          ClientScout uses a credit-based model for certain features (e.g., map searches, AI actions, email sends). By
+          purchasing credits or bundles:
+        </p>
+        <ul className="list-disc pl-6 space-y-2">
+          <li>You agree to pay the displayed price and applicable taxes where required.</li>
+          <li>Credits are consumed per use as described in the product; unused credits may expire according to plan terms shown at purchase.</li>
+          <li>Refunds are handled on a case-by-case basis unless otherwise required by law.</li>
+          <li>We reserve the right to adjust pricing with notice on the website.</li>
+        </ul>
+      </Section>
 
-          <h2 className="text-2xl font-bold text-gray-900 mt-8 mb-4">5. Accuracy of Materials</h2>
-          <p className="mb-4">
-            The materials appearing on ClientScout's website could include technical, typographical, or photographic errors. ClientScout does not warrant that any of the materials on its website are accurate, complete or current. ClientScout may make changes to the materials contained on its website at any time without notice. However ClientScout does not make any commitment to update the materials.
-          </p>
+      <Section title="5. Acceptable use">
+        <p className="mb-3">You agree not to:</p>
+        <ul className="list-disc pl-6 space-y-2">
+          <li>Use the service for spam, harassment, or illegal outreach.</li>
+          <li>Scrape or export data in violation of third-party terms (including Google Maps / Places policies).</li>
+          <li>Attempt to reverse engineer, overload, or disrupt the platform.</li>
+          <li>Upload malicious code or impersonate others.</li>
+          <li>Resell or sublicense the service without written permission.</li>
+        </ul>
+      </Section>
 
-          <h2 className="text-2xl font-bold text-gray-900 mt-8 mb-4">6. Links</h2>
-          <p className="mb-4">
-            ClientScout has not reviewed all of the sites linked to its website and is not responsible for the contents of any such linked site. The inclusion of any link does not imply endorsement by ClientScout of the site. Use of any such linked website is at the user's own risk.
-          </p>
+      <Section title="6. Lead data and outreach">
+        <p>
+          You are solely responsible for how you use lead data and for complying with applicable laws (including data
+          protection, anti-spam, and telemarketing regulations in your jurisdiction). ClientScout provides tools; we do
+          not guarantee that any outreach will be lawful or successful for your use case.
+        </p>
+      </Section>
 
-          <h2 className="text-2xl font-bold text-gray-900 mt-8 mb-4">7. Modifications</h2>
-          <p className="mb-4">
-            ClientScout may revise these terms of service for its website at any time without notice. By using this website you are agreeing to be bound by the then current version of these terms of service.
-          </p>
+      <Section title="7. AI-generated content">
+        <p>
+          AI outputs (analysis, emails, website layouts) are provided for assistance only. You must review all content
+          before sending to prospects or publishing. We do not warrant accuracy, uniqueness, or fitness for a particular
+          purpose of AI-generated materials.
+        </p>
+      </Section>
 
-          <h2 className="text-2xl font-bold text-gray-900 mt-8 mb-4">8. Governing Law</h2>
-          <p className="mb-4">
-            These terms and conditions are governed by and construed in accordance with the laws of India and you irrevocably submit to the exclusive jurisdiction of the courts in that State or location.
-          </p>
-        </div>
-      </div>
-    </div>
+      <Section title="8. Intellectual property">
+        <p>
+          The ClientScout platform, branding, and software are owned by us or our licensors. You retain rights to content
+          you upload. You grant us a limited license to host and process your content solely to operate the service.
+        </p>
+      </Section>
+
+      <Section title="9. Disclaimer of warranties">
+        <p>
+          The service is provided &quot;as is&quot; and &quot;as available&quot; without warranties of any kind, express or
+          implied, including merchantability, fitness for a particular purpose, and non-infringement. We do not guarantee
+          uninterrupted or error-free operation.
+        </p>
+      </Section>
+
+      <Section title="10. Limitation of liability">
+        <p>
+          To the maximum extent permitted by law, ClientScout and its operators shall not be liable for indirect,
+          incidental, special, consequential, or punitive damages, or loss of profits, data, or business opportunities
+          arising from your use of the service. Our total liability for any claim shall not exceed the amount you paid us
+          in the twelve (12) months before the claim.
+        </p>
+      </Section>
+
+      <Section title="11. Termination">
+        <p>
+          We may suspend or terminate your account if you violate these terms or if required for security or legal reasons.
+          You may stop using the service at any time. Provisions that by nature should survive termination will remain in
+          effect.
+        </p>
+      </Section>
+
+      <Section title="12. Governing law">
+        <p>
+          These terms are governed by the laws of India. Disputes shall be subject to the exclusive jurisdiction of the
+          courts in India, unless otherwise required by mandatory local law.
+        </p>
+      </Section>
+
+      <Section title="13. Changes to terms">
+        <p>
+          We may update these Terms &amp; Conditions. Material changes will be indicated by updating the date on this
+          page. Continued use after changes constitutes acceptance.
+        </p>
+      </Section>
+
+      <Section title="14. Contact">
+        <p>
+          Questions about these terms? Email{' '}
+          <a href="mailto:clientscoute@gmail.com" className="text-teal-600 font-medium hover:underline">
+            clientscoute@gmail.com
+          </a>{' '}
+          or visit our{' '}
+          <a href="/contact" className="text-teal-600 font-medium hover:underline">
+            contact page
+          </a>
+          .
+        </p>
+      </Section>
+    </LegalPageLayout>
   );
 };
 

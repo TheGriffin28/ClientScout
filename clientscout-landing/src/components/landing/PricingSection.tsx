@@ -80,7 +80,7 @@ const PricingSection = () => {
   ];
 
   return (
-    <section id="pricing" className="py-24 bg-gray-900 text-white relative overflow-hidden">
+    <section id="pricing-section" className="py-24 bg-gray-900 text-white relative overflow-hidden scroll-mt-24">
       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
       
       {/* Background Glows */}

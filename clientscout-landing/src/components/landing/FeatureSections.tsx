@@ -39,7 +39,7 @@ const FeatureDiscovery = () => {
             <div className="inline-flex items-center px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold uppercase tracking-wide mb-4">
                 Lead Discovery
             </div>
-            <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-6">
+            <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-6">
               Discover high-intent leads from Google Maps
             </h2>
             <ul className="space-y-4 mb-8">
@@ -83,7 +83,7 @@ const FeatureCRM = () => {
               <div className="inline-flex items-center px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-bold uppercase tracking-wide mb-4">
                   CRM & Management
               </div>
-              <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-6">
+              <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-6">
                 Organize and track every lead in one place
               </h2>
               <ul className="space-y-4 mb-8">
@@ -166,7 +166,7 @@ const FeatureCRM = () => {
               <div className="inline-flex items-center px-3 py-1 rounded-full bg-purple-50 text-purple-700 text-xs font-bold uppercase tracking-wide mb-4">
                   AI Intelligence
               </div>
-              <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-6">
+              <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-6">
                 Know exactly how to pitch each lead
               </h2>
               <ul className="space-y-4 mb-8">
@@ -175,7 +175,8 @@ const FeatureCRM = () => {
                   "Website performance & trust observations",
                   "Conversion improvement suggestions",
                   "AI-generated lead summary",
-                  "Personalized email & WhatsApp drafts"
+                  "Personalized email & WhatsApp drafts",
+                  "Trigger website layout generation from analysis"
                 ].map((item, i) => (
                   <li key={i} className="flex items-center gap-3 text-gray-700">
                       <div className="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center text-purple-600">
@@ -204,13 +205,14 @@ const FeatureCRM = () => {
               <div className="inline-flex items-center px-3 py-1 rounded-full bg-green-50 text-green-700 text-xs font-bold uppercase tracking-wide mb-4">
                   Outreach
               </div>
-              <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-6">
+              <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-6">
                 Reach leads faster with built-in outreach
               </h2>
               <ul className="space-y-4 mb-8">
                 {[
                   "Email & WhatsApp outreach integration",
                   "AI-generated personalized drafts",
+                  "Optional website design preview button in emails",
                   "Reusable message templates with dynamic variables",
                   "One-click actions: Email, WhatsApp, Phone Dialer",
                   "Automatic activity logging"
