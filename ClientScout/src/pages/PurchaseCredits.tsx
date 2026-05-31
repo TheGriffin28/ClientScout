@@ -18,6 +18,8 @@ export default function PurchaseCredits() {
     price: number;
     name?: string;
     details?: string;
+    bundleId?: string;
+    bundleCredits?: { email: number; ai: number; map: number };
   } | null>(null);
   const [paymentMethod] = useState<"upi">("upi"); // Only UPI for now
   const [transactionId, setTransactionId] = useState("");
@@ -118,17 +120,28 @@ export default function PurchaseCredits() {
 
     setLoading(true);
     try {
-      // For bundles, we send the type as "bundle_starter" or "bundle_growth"
-      // The credits field might need to be handled carefully if backend expects number
-      // We'll send 1 for bundles as a placeholder count, or the total count if applicable
-      const purchaseData = { 
-        type: selectedPackage.type, 
-        credits: typeof selectedPackage.amount === 'number' ? selectedPackage.amount : 1,
-        amount: selectedPackage.price,
-        paymentMethod,
-        transactionId,
-        details: selectedPackage.details // Extra field for bundle details if backend supports it
-      };
+      const isBundle = selectedPackage.type === "bundle" || selectedPackage.type.startsWith("bundle_");
+      const purchaseData = isBundle
+        ? {
+            type: "bundle",
+            bundleId: selectedPackage.bundleId || selectedPackage.type,
+            bundleCredits: selectedPackage.bundleCredits,
+            credits: selectedPackage.bundleCredits
+              ? selectedPackage.bundleCredits.email +
+                selectedPackage.bundleCredits.ai +
+                selectedPackage.bundleCredits.map
+              : 1,
+            amount: selectedPackage.price,
+            paymentMethod,
+            transactionId,
+          }
+        : {
+            type: selectedPackage.type,
+            credits: typeof selectedPackage.amount === "number" ? selectedPackage.amount : 1,
+            amount: selectedPackage.price,
+            paymentMethod,
+            transactionId,
+          };
 
       await api.post("/payment/purchase", purchaseData);
       await refreshUser();
@@ -274,13 +287,17 @@ export default function PurchaseCredits() {
       </div>
 
       <button
-        onClick={() => setSelectedPackage({ 
-          type: type, 
-          amount: `${features.email} Email + ${features.ai} AI + ${features.map} Map`, 
-          price: price,
-          name: title,
-          details: `Bundle: ${features.email} Email, ${features.ai} AI, ${features.map} Map`
-        })}
+        onClick={() =>
+          setSelectedPackage({
+            type: "bundle",
+            bundleId: type,
+            bundleCredits: { email: features.email, ai: features.ai, map: features.map },
+            amount: `${features.email} Email + ${features.ai} AI + ${features.map} Map`,
+            price: price,
+            name: title,
+            details: `Bundle: ${features.email} Email, ${features.ai} AI, ${features.map} Map`,
+          })
+        }
         disabled={loading}
         className="w-full py-3 text-sm font-bold text-white bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl hover:opacity-90 transition-opacity shadow-lg shadow-purple-500/25 mb-6"
       >
@@ -344,7 +361,7 @@ export default function PurchaseCredits() {
           <CreditCard 
             title="AI Credits" 
             icon={<FaRobot size={24} />} 
-            description="1 credit = 1 AI action (rewrite, pitch, audit)"
+            description="1 credit = analyze lead, AI drafts, or website mockup generation"
             type="ai" 
             current={user?.extraAICallsCredits}
             colorClass="bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400"

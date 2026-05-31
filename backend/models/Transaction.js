@@ -10,7 +10,7 @@ const transactionSchema = mongoose.Schema(
     type: {
       type: String,
       required: true,
-      enum: ["email", "ai", "map"],
+      enum: ["email", "ai", "map", "bundle"],
     },
     amount: {
       type: Number,
@@ -20,6 +20,14 @@ const transactionSchema = mongoose.Schema(
       type: Number,
       required: true,
     },
+    bundleId: {
+      type: String,
+    },
+    bundleCredits: {
+      email: { type: Number },
+      ai: { type: Number },
+      map: { type: Number },
+    },
     paymentMethod: {
       type: String,
       required: true,
@@ -28,19 +36,19 @@ const transactionSchema = mongoose.Schema(
     },
     transactionId: {
       type: String,
-      required: function() {
+      required: function () {
         return this.paymentMethod === "upi";
       },
     },
     status: {
       type: String,
       enum: ["pending", "completed", "failed"],
-      default: "completed", // Since we are simulating instant purchase for now
+      default: "completed",
     },
     currency: {
       type: String,
       default: "INR",
-    }
+    },
   },
   {
     timestamps: true,

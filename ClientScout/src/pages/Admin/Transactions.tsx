@@ -25,6 +25,7 @@ interface Transaction {
   type: string;
   amount: number;
   credits: number;
+  bundleCredits?: { email: number; ai: number; map: number };
   paymentMethod: string;
   transactionId: string;
   status: string;
@@ -286,9 +287,19 @@ const Transactions: React.FC = () => {
                     <td className="border-b border-gray-200 px-4 py-5 dark:border-gray-700">
                       <div className="flex flex-col">
                         <span className="font-medium text-black dark:text-white capitalize">
-                          {txn.type === "ai" ? "AI Calls" : txn.type === "map" ? "Map Search" : "Email Search"}
+                          {txn.type === "bundle"
+                            ? "Bundle"
+                            : txn.type === "ai"
+                            ? "AI Calls"
+                            : txn.type === "map"
+                            ? "Map Search"
+                            : "Email"}
                         </span>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">+{txn.credits} Credits</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {txn.type === "bundle" && txn.bundleCredits
+                            ? `+${txn.bundleCredits.email} email, +${txn.bundleCredits.ai} AI, +${txn.bundleCredits.map} map`
+                            : `+${txn.credits} credits`}
+                        </span>
                       </div>
                     </td>
                     <td className="border-b border-gray-200 px-4 py-5 dark:border-gray-700">

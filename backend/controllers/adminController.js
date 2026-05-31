@@ -458,15 +458,20 @@ export const updateTransactionStatus = async (req, res) => {
       const user = transaction.user;
       const credits = transaction.credits;
       const type = transaction.type;
+      const bundleCredits = transaction.bundleCredits;
 
-      if (type === "email") {
+      if (type === "bundle" && bundleCredits) {
+        user.extraEmailCredits = (user.extraEmailCredits || 0) + (bundleCredits.email || 0);
+        user.extraAICallsCredits = (user.extraAICallsCredits || 0) + (bundleCredits.ai || 0);
+        user.extraMapSearchCredits = (user.extraMapSearchCredits || 0) + (bundleCredits.map || 0);
+      } else if (type === "email") {
         user.extraEmailCredits = (user.extraEmailCredits || 0) + credits;
       } else if (type === "ai") {
         user.extraAICallsCredits = (user.extraAICallsCredits || 0) + credits;
       } else if (type === "map") {
         user.extraMapSearchCredits = (user.extraMapSearchCredits || 0) + credits;
       }
-      
+
       await user.save();
     }
 
