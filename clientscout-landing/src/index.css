@@ -87,12 +87,19 @@
   perspective: 1200px;
 }
 
-.hero-mockup-tilt {
-  transform: rotateY(-6deg) rotateX(3deg);
-  transform-style: preserve-3d;
-  transition: transform 0.4s ease;
+@media (min-width: 1024px) {
+  .lg\:hero-mockup-tilt {
+    transform: rotateY(-6deg) rotateX(3deg);
+    transform-style: preserve-3d;
+    transition: transform 0.4s ease;
+  }
+
+  .hero-mockup-perspective:hover .lg\:hero-mockup-tilt {
+    transform: rotateY(-3deg) rotateX(1deg);
+  }
 }
 
-.hero-mockup-perspective:hover .hero-mockup-tilt {
-  transform: rotateY(-3deg) rotateX(1deg);
+html,
+body {
+  overflow-x: hidden;
 }

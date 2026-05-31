@@ -12,7 +12,7 @@ import TermsOfService from './pages/TermsOfService';
 function App() {
   return (
     <Router>
-      <div className="min-h-screen bg-white font-sans text-gray-900 selection:bg-blue-100 selection:text-blue-900">
+      <div className="min-h-screen overflow-x-hidden bg-white font-sans text-gray-900 selection:bg-blue-100 selection:text-blue-900">
         <ScrollToTop />
         <Navbar />
         <Routes>
