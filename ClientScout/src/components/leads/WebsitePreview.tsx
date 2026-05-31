@@ -586,7 +586,7 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({
     !services || services.length === 0 ? null : (
       <section className="py-24 relative overflow-hidden" style={{ backgroundColor: theme.colors.background }}>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-8">
-          <div className="text-center mb-20">
+          <div className="text-center mb-16">
             <span className="inline-block px-4 py-2 rounded-full text-sm font-bold mb-6" style={{ backgroundColor: hexWithAlpha(theme.colors.accent, 0.125), color: theme.colors.accent }}>
               Our Services
             </span>
@@ -594,35 +594,33 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({
               What We Do
             </h2>
           </div>
-          <div className="grid md:grid-cols-3 gap-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {services.slice(0, 3).map((service: Service, index: number) => (
               <div
                 key={index}
-                className="group rounded-3xl shadow-2xl overflow-hidden transition-all duration-500 hover:z-10"
-                style={{
-                  backgroundColor: theme.colors.surface,
-                  marginTop: index === 1 ? '40px' : 0,
-                  marginLeft: index > 0 ? '-20px' : 0
-                }}
+                className="group flex flex-col rounded-3xl shadow-2xl overflow-hidden transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.4)]"
+                style={{ backgroundColor: theme.colors.surface }}
               >
-                <div className="relative h-80 overflow-hidden">
+                <div className="relative h-56 sm:h-64 overflow-hidden shrink-0">
                   <img
                     src={getServiceImageUrl(index)}
                     alt={service.name}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                     loading="lazy"
                     onError={() => setServiceImageErrors(prev => ({ ...prev, [index]: true }))}
                   />
-                  <div className="absolute inset-0" style={{ backgroundColor: hexWithAlpha(theme.colors.background, 0.5) }}></div>
-                </div>
-                <div className="p-8 -mt-20 relative">
-                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl mb-4" style={{ backgroundColor: theme.colors.accent, color: theme.colors.surface }}>
+                  <div
+                    className="absolute bottom-4 left-4 w-12 h-12 rounded-xl flex items-center justify-center text-xl font-black shadow-lg"
+                    style={{ backgroundColor: theme.colors.accent, color: theme.colors.surface }}
+                  >
                     {index + 1}
                   </div>
-                  <h3 className="text-2xl font-bold mb-4" style={{ color: theme.colors.text }}>
+                </div>
+                <div className="p-6 sm:p-8 flex flex-col flex-1">
+                  <h3 className="text-xl sm:text-2xl font-bold mb-3" style={{ color: theme.colors.text }}>
                     {service.name}
                   </h3>
-                  <p className="leading-relaxed" style={{ color: hexWithAlpha(theme.colors.text, 0.6) }}>
+                  <p className="leading-relaxed flex-1" style={{ color: hexWithAlpha(theme.colors.text, 0.6) }}>
                     {service.description}
                   </p>
                 </div>
