@@ -15,6 +15,7 @@ import LeadDetail from "./pages/LeadDetail";
 import MapLeadSearch from "./pages/MapLeadSearch";
 import WebsitePreviewPage from "./pages/WebsitePreviewPage";
 import LayoutPresentationPage from "./pages/LayoutPresentationPage";
+import DesignEditorPage from "./pages/DesignEditorPage";
 
 import AppLayout from "./layout/AppLayout";
 import { ScrollToTop } from "./components/common/ScrollToTop";
@@ -45,6 +46,7 @@ export default function App() {
         <Route path="/verify-2fa" element={<VerifyTwoFactor />} />
 
         <Route path="/preview" element={<WebsitePreviewPage />} />
+        <Route path="/design-editor" element={<DesignEditorPage />} />
         {/* Dashboard Layout */}
         <Route element={<AppLayout />}>
           <Route index path="/" element={<Home />} />

@@ -355,7 +355,7 @@ const Leads = () => {
                               <FaPhoneAlt size={14} />
                             </button>
                           )}
-                          {lead.generatedLayout ? (
+                          {lead.designsPreparedAt ? (
                             <button 
                               onClick={() => {
                                 const previewData = {
@@ -493,7 +493,7 @@ const Leads = () => {
                       )}
                     </div>
                     <div className="flex gap-2 items-center">
-                      {lead.generatedLayout ? (
+                      {lead.designsPreparedAt ? (
                         <button 
                           onClick={() => {
                             const previewData = {

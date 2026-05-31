@@ -36,11 +36,13 @@ const leadSchema = new mongoose.Schema(
       generatedAt: Date
     },
 
+    designsPreparedAt: Date,
+
     generatedLayout: {
       templateKey: {
         type: String,
         enum: ["modern-business", "premium-dark", "local-bright", "minimal-fast"],
-        default: "modern-business"
+        default: "modern-business",
       },
       content: {
         hero: {
@@ -73,6 +75,22 @@ const leadSchema = new mongoose.Schema(
       },
       pitchMessage: String,
       previewUrl: String,
+      themeKey: {
+        type: String,
+        enum: ["light", "dark", "luxury", "startup", "warm"],
+        default: "light",
+      },
+      designRationale: String,
+      analysisSnapshot: {
+        websiteObservations: {
+          performanceIssues: [String],
+          trustIssues: [String],
+          conversionIssues: [String],
+        },
+        painPoints: [String],
+        aiSummary: String,
+        capturedAt: Date,
+      },
       generatedAt: Date
     },
 
@@ -90,6 +108,17 @@ const leadSchema = new mongoose.Schema(
     notes: String,
     nextFollowUp: Date,
     lastContactedAt: Date,
+
+    // Client Approval Fields
+    clientApproved: {
+      type: Boolean,
+      default: false
+    },
+    clientApprovedAt: Date,
+    clientApprovedLayoutId: String,
+    clientApprovedLayoutName: String,
+    clientChangeRequest: String,
+    clientChangeRequestedAt: Date,
   },
   { timestamps: true }
 );

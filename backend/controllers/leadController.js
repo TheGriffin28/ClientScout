@@ -3,8 +3,16 @@ import User from "../models/User.js";
 import Config from "../models/Config.js";
 import mongoose from "mongoose";
 import { analyzeWebsite, generateEmailDraft, generateWhatsAppDraft, generateWebsiteLayout } from "../services/aiService.js";
+import {
+  suggestLayoutFromAnalysis,
+  getDesignFixesFromAnalysis,
+  leadHasWebsite,
+} from "../services/layoutSuggestion.js";
 import { sendEmail } from "../services/emailService.js";
 import { logAdminAction } from "../utils/logger.js";
+import { createNotification } from "./notificationController.js";
+import Notification from "../models/Notification.js";
+import { buildLeadPreviewUrl } from "../utils/frontendUrl.js";
 
 // Helper to get effective limit
 const getEffectiveLimit = async (user, userField, configKey, defaultVal = 100) => {
@@ -17,9 +25,17 @@ const getEffectiveLimit = async (user, userField, configKey, defaultVal = 100) =
 
 /* CREATE LEAD */
 export const createLead = async (req, res) => {
+  const {
+    emailDraft: _emailDraft,
+    whatsappDraft: _whatsappDraft,
+    generatedLayout: _generatedLayout,
+    designsPreparedAt: _designsPreparedAt,
+    ...safeBody
+  } = req.body;
+
   const lead = await Lead.create({
-    ...req.body,
-    user: req.user._id
+    ...safeBody,
+    user: req.user._id,
   });
 
   res.status(201).json(lead);
@@ -383,6 +399,7 @@ export const generateEmail = async (req, res) => {
   }
 
   try {
+    const hasDesigns = Boolean(lead.designsPreparedAt && lead.generatedLayout?.content);
     const emailDraft = await generateEmailDraft(
       lead.businessName,
       lead.industry,
@@ -390,12 +407,21 @@ export const generateEmail = async (req, res) => {
       lead.painPoints,
       lead.aiSummary,
       lead.businessType,
-      lead.websiteObservations
+      lead.websiteObservations,
+      hasDesigns,
+      lead.website
     );
+
+    let body = emailDraft.body;
+    if (hasDesigns) {
+      body +=
+        "\n\nWe prepared 2 custom website design concepts for your business. Click the button in this email to review and choose your preferred design." +
+        "\n\nNote: Images and content shown in the preview are sample placeholders — we will update everything with your actual photos, branding, and business details as per your reference.";
+    }
 
     lead.emailDraft = {
       subject: emailDraft.subject,
-      body: emailDraft.body,
+      body,
       generatedAt: new Date()
     };
     await lead.save();
@@ -427,7 +453,7 @@ export const generateEmail = async (req, res) => {
 /* SEND EMAIL VIA RESEND */
 export const sendLeadEmail = async (req, res) => {
   const { id } = req.params;
-  const { subject, body } = req.body;
+  const { subject, body, designPreviewUrl } = req.body;
 
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return res.status(400).json({ message: "Invalid lead ID format" });
@@ -501,12 +527,29 @@ export const sendLeadEmail = async (req, res) => {
       </div>
     `;
 
+    // Optional design preview button (keeps long URLs out of the email body text)
+    let designButtonHtml = "";
+    if (designPreviewUrl) {
+      designButtonHtml = `
+        <div style="margin: 28px 0; text-align: center;">
+          <a href="${designPreviewUrl}" target="_blank" style="display: inline-block; background-color: #2563eb; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
+            View Your Website Designs
+          </a>
+          <p style="margin: 12px 0 0; font-size: 13px; color: #666;">Review both design options and approve your favorite.</p>
+          <p style="margin: 10px 0 0; font-size: 12px; color: #888; font-style: italic; max-width: 420px; margin-left: auto; margin-right: auto;">
+            Images and content in the preview are sample placeholders — we will update everything with your actual photos, branding, and business details as per your reference.
+          </p>
+        </div>
+      `;
+    }
+
     await sendEmail({
       to: lead.email,
       subject: subject || "Re: Inquiry",
       html: `
         <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
           ${htmlBody}
+          ${designButtonHtml}
           ${footerHtml}
         </div>
       `,
@@ -578,17 +621,27 @@ export const generateWhatsApp = async (req, res) => {
   }
 
   try {
+    const hasDesigns = Boolean(lead.designsPreparedAt && lead.generatedLayout?.content);
     const whatsappMsg = await generateWhatsAppDraft(
       lead.businessName,
       lead.industry,
       lead.contactName,
       lead.painPoints,
       lead.businessType,
-      lead.websiteObservations
+      lead.websiteObservations,
+      hasDesigns,
+      lead.website
     );
 
+    let body = whatsappMsg;
+    if (hasDesigns) {
+      body +=
+        "\n\nWe also prepared 2 custom website design previews for you — I'll share the review link with you next." +
+        "\n\nNote: Images and text in the preview are placeholders and will be updated with your real content, photos, and branding as per your reference.";
+    }
+
     lead.whatsappDraft = {
-      body: whatsappMsg,
+      body,
       generatedAt: new Date()
     };
     await lead.save();
@@ -715,19 +768,44 @@ export const generateLayout = async (req, res) => {
   };
 
   try {
+    const hasWebsite = leadHasWebsite(lead.website);
+    const hasAnalysis = Boolean(lead.aiGeneratedAt && lead.websiteObservations);
+
+    if (hasWebsite && !hasAnalysis) {
+      return res.status(400).json({
+        message: "Please run Analyze with AI first so designs can address issues found on their current website.",
+        code: "ANALYSIS_REQUIRED",
+      });
+    }
+
+    const layoutSuggestion = suggestLayoutFromAnalysis(
+      lead.industry,
+      lead.businessType,
+      lead.websiteObservations
+    );
+
     const content = await generateWebsiteLayout(
       lead.businessName,
       lead.industry,
       lead.businessType,
       lead.painPoints,
-      lead.aiSummary
+      lead.aiSummary,
+      lead.websiteObservations,
+      hasWebsite
     );
 
     const fallbackServices = mapCategoryServices(lead.industry).map((name) => ({
       name,
       description: `${name} tailored for ${lead.businessName}.`,
     }));
-    const templateKey = pickTemplateKey(lead.industry, lead.businessType);
+    const templateKey = layoutSuggestion.templateKey || pickTemplateKey(lead.industry, lead.businessType);
+    const themeKey = layoutSuggestion.themeKey || "light";
+    const designFixes = getDesignFixesFromAnalysis(lead.websiteObservations);
+    const fixesSummary =
+      designFixes.length > 0
+        ? designFixes.map((f) => f.issue).slice(0, 2).join("; ")
+        : null;
+
     const safeContent = {
       hero: content.hero || {
         headline: `${lead.businessName} - Trusted Local Service`,
@@ -751,14 +829,27 @@ export const generateLayout = async (req, res) => {
       },
     };
 
+    lead.designsPreparedAt = new Date();
     lead.generatedLayout = {
       templateKey,
+      themeKey,
+      designRationale: layoutSuggestion.rationale,
+      analysisSnapshot: hasAnalysis
+        ? {
+            websiteObservations: lead.websiteObservations,
+            painPoints: lead.painPoints,
+            aiSummary: lead.aiSummary,
+            capturedAt: lead.aiGeneratedAt || new Date(),
+          }
+        : undefined,
       content: safeContent,
       pitchMessage:
         content.pitchMessage ||
-        `Hi ${lead.businessName} team, we noticed your business could benefit from a stronger online presence. We created a ready website preview for you. Would you like us to make it live?`,
-      previewUrl: `https://preview.clientscout.site/${lead._id}`,
-      generatedAt: new Date()
+        (fixesSummary
+          ? `Hi ${lead.businessName} team, we reviewed your website and noticed ${fixesSummary}. We created an improved design concept to fix these issues. Would you like us to make it live?`
+          : `Hi ${lead.businessName} team, we noticed your business could benefit from a stronger online presence. We created a ready website preview for you. Would you like us to make it live?`),
+      previewUrl: buildLeadPreviewUrl(lead._id),
+      generatedAt: new Date(),
     };
     if (lead.status === "New") {
       lead.status = "FollowUp";
@@ -793,5 +884,187 @@ export const generateLayout = async (req, res) => {
     });
 
     res.status(500).json({ message: "Failed to generate website layout", error: error.message });
+  }
+};
+
+/* GET LEAD BY ID - PUBLIC (NO AUTH REQUIRED) */
+export const getLeadByIdPublic = async (req, res) => {
+  try {
+    // Validate ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "Invalid lead ID format" });
+    }
+
+    const lead = await Lead.findById(req.params.id);
+
+    if (!lead) {
+      return res.status(404).json({ message: "Lead not found" });
+    }
+
+    // Return only necessary fields for public preview
+    res.json({
+      _id: lead._id,
+      businessName: lead.businessName,
+      industry: lead.industry,
+      businessType: lead.businessType,
+      designsPreparedAt: lead.designsPreparedAt,
+      generatedLayout: lead.designsPreparedAt ? lead.generatedLayout : undefined,
+      layoutVersions: lead.layoutVersions,
+      clientApproved: lead.clientApproved,
+      clientApprovedAt: lead.clientApprovedAt,
+      clientApprovedLayoutId: lead.clientApprovedLayoutId,
+      clientApprovedLayoutName: lead.clientApprovedLayoutName,
+      clientChangeRequest: lead.clientChangeRequest,
+      clientChangeRequestedAt: lead.clientChangeRequestedAt,
+    });
+  } catch (error) {
+    console.error("Error fetching public lead:", error);
+    res.status(500).json({ message: "Error fetching lead" });
+  }
+};
+
+/* UPDATE LEAD - PUBLIC (NO AUTH REQUIRED) - Only approval fields */
+export const updateLeadPublic = async (req, res) => {
+  try {
+    // Validate ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "Invalid lead ID format" });
+    }
+
+    const lead = await Lead.findById(req.params.id);
+
+    if (!lead) {
+      return res.status(404).json({ message: "Lead not found" });
+    }
+
+    // Only allow updating client approval fields
+    const allowedFields = [
+      "clientApproved",
+      "clientApprovedAt",
+      "clientApprovedLayoutId",
+      "clientApprovedLayoutName",
+      "clientChangeRequest",
+      "clientChangeRequestedAt"
+    ];
+
+    // Filter request body to only include allowed fields
+    const updates = {};
+    for (const field of allowedFields) {
+      if (field in req.body) {
+        updates[field] = req.body[field];
+      }
+    }
+
+    // Check if this is a design approval (clientApproved changes to true)
+    const wasApprovedBefore = Boolean(lead.clientApproved);
+    const isApprovedNow =
+      updates.clientApproved === true || updates.clientApproved === "true";
+    const isNewApproval = !wasApprovedBefore && isApprovedNow;
+
+    const updated = await Lead.findByIdAndUpdate(
+      req.params.id,
+      updates,
+      { new: true }
+    );
+
+    // Design approved: Resend email + in-app notification
+    if (isApprovedNow) {
+      try {
+        const user = await User.findById(lead.user);
+        const designName =
+          updates.clientApprovedLayoutName ||
+          updated.clientApprovedLayoutName ||
+          "the selected design";
+        const approvedAt =
+          updates.clientApprovedAt ||
+          updated.clientApprovedAt ||
+          new Date().toISOString();
+
+        if (isNewApproval && user?.email) {
+          const emailContent = `
+            <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+              <h2 style="color: #2563eb;">🎉 Great News! Client Approved the Design!</h2>
+              <p>Hi ${user.name},</p>
+              <p>Your client has approved the website design for <strong>${lead.businessName}</strong>!</p>
+              <p><strong>Approved Design:</strong> ${designName}</p>
+              <p><strong>Approved At:</strong> ${new Date(approvedAt).toLocaleString()}</p>
+              <p>You can now proceed with the next steps. Visit your lead details to see more information.</p>
+              <p><a href="${process.env.FRONTEND_URL || ""}/leads/${lead._id}" style="color: #2563eb;">View lead in ClientScout</a></p>
+              <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+              <div style="font-size: 0.9em; color: #666; background-color: #f9f9f9; padding: 15px; border-radius: 5px;">
+                <p style="margin: 0;">This is an automated notification from ClientScout.</p>
+                <p style="margin: 5px 0 0;">Lead: <strong>${lead.businessName}</strong></p>
+              </div>
+            </div>
+          `;
+
+          await sendEmail({
+            to: user.email,
+            subject: `✅ Design Approved - ${lead.businessName}`,
+            html: emailContent,
+          });
+        }
+
+        const existingApprovalNotif = await Notification.findOne({
+          user: lead.user,
+          lead: lead._id,
+          type: "design_approved",
+          isRead: false,
+        });
+
+        if (isNewApproval || !existingApprovalNotif) {
+          await createNotification(
+            lead.user,
+            lead._id,
+            "design_approved",
+            "Design Approved!",
+            `Client approved the design: ${designName}`,
+            `/leads/${lead._id}`
+          );
+        }
+      } catch (error) {
+        console.error("Error sending approval notification:", error);
+      }
+    }
+
+    // Change request notification
+    if (updates.clientChangeRequest && !lead.clientChangeRequest) {
+      try {
+        const existingChangeNotif = await Notification.findOne({
+          user: lead.user,
+          lead: lead._id,
+          type: "change_request",
+          isRead: false,
+        });
+
+        if (!existingChangeNotif) {
+          await createNotification(
+            lead.user,
+            lead._id,
+            "change_request",
+            "Change Request Received",
+            `Client requested changes: ${updates.clientChangeRequest}`,
+            `/leads/${lead._id}`
+          );
+        }
+      } catch (error) {
+        console.error("Error creating change request notification:", error);
+      }
+    }
+
+    // Return only necessary fields
+    res.json({
+      _id: updated._id,
+      businessName: updated.businessName,
+      clientApproved: updated.clientApproved,
+      clientApprovedAt: updated.clientApprovedAt,
+      clientApprovedLayoutId: updated.clientApprovedLayoutId,
+      clientApprovedLayoutName: updated.clientApprovedLayoutName,
+      clientChangeRequest: updated.clientChangeRequest,
+      clientChangeRequestedAt: updated.clientChangeRequestedAt,
+    });
+  } catch (error) {
+    console.error("Error updating public lead:", error);
+    res.status(500).json({ message: "Error updating lead" });
   }
 };

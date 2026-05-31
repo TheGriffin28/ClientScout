@@ -2,7 +2,8 @@
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { useState, useEffect } from "react";
 import WebsitePreview from "../components/leads/WebsitePreview";
-import { LayoutVersion, updateLead, getLeadById } from "../services/leadService";
+import { LayoutVersion, updateLeadPublic, getLeadByIdPublic, Lead } from "../services/leadService";
+import { enrichLeadWithDesigns } from "../components/leads/designPreviewUtils";
 import { FaArrowLeft, FaStar, FaThumbsUp, FaEdit } from "react-icons/fa";
 import toast from "react-hot-toast";
 
@@ -17,10 +18,50 @@ export default function WebsitePreviewPage() {
   const [isApproved, setIsApproved] = useState(false);
   const [changeRequest, setChangeRequest] = useState("");
   const [showChangeRequestModal, setShowChangeRequestModal] = useState(false);
+  const [changeRequestSubmitted, setChangeRequestSubmitted] = useState(false);
   const [previewId, setPreviewId] = useState<string | null>(null);
 
   useEffect(() => {
     const loadPreviewData = async () => {
+      const leadIdParam = searchParams.get("leadId");
+      if (leadIdParam) {
+        try {
+          const lead = await getLeadByIdPublic(leadIdParam);
+          const enriched = enrichLeadWithDesigns(lead as Lead);
+          const versions = enriched.layoutVersions || [];
+
+          if (versions.length > 0) {
+            setPreviewId(leadIdParam);
+            setVersions(versions);
+            const recommended = versions.find((v) => v.isRecommended);
+            const initial = recommended || versions[0];
+            setSelectedVersionId(initial.id);
+            setLocalData({
+              businessName: lead.businessName,
+              leadId: leadIdParam,
+              industry: lead.industry,
+              businessType: lead.businessType,
+            });
+            setLocalLayout(initial);
+
+            if (lead.clientApproved) {
+              setIsApproved(true);
+              if (lead.clientApprovedLayoutId) {
+                setSelectedVersionId(lead.clientApprovedLayoutId);
+                const approvedVersion = versions.find((v) => v.id === lead.clientApprovedLayoutId);
+                if (approvedVersion) setLocalLayout(approvedVersion);
+              }
+            }
+            if (lead.clientChangeRequest) setChangeRequestSubmitted(true);
+
+            setLoading(false);
+            return;
+          }
+        } catch (error) {
+          console.error("Error loading lead preview:", error);
+        }
+      }
+
       const encodedData = searchParams.get("data");
       if (encodedData) {
         try {
@@ -46,7 +87,7 @@ export default function WebsitePreviewPage() {
           // Load status from database!
           if (id && !id.startsWith("preview_")) {
             try {
-              const lead = await getLeadById(id);
+              const lead = await getLeadByIdPublic(id);
               if (lead.clientApproved) {
                 setIsApproved(true);
                 if (lead.clientApprovedLayoutId) {
@@ -56,6 +97,9 @@ export default function WebsitePreviewPage() {
                     setLocalLayout(approvedVersion);
                   }
                 }
+              }
+              if (lead.clientChangeRequest) {
+                setChangeRequestSubmitted(true);
               }
             } catch (e) {
               console.error("Error loading lead from API:", e);
@@ -82,9 +126,12 @@ export default function WebsitePreviewPage() {
         // Load status from database!
         if (id && !id.startsWith("preview_")) {
           try {
-            const lead = await getLeadById(id);
+            const lead = await getLeadByIdPublic(id);
             if (lead.clientApproved) {
               setIsApproved(true);
+            }
+            if (lead.clientChangeRequest) {
+              setChangeRequestSubmitted(true);
             }
           } catch (e) {
             console.error("Error loading lead from API:", e);
@@ -103,27 +150,18 @@ export default function WebsitePreviewPage() {
   };
 
   const handleApproveDesign = async () => {
-    console.log("handleApproveDesign CALLED!");
-    console.log("isApproved:", isApproved);
-    console.log("previewId:", previewId);
-    console.log("selectedVersionId:", selectedVersionId);
-    
-    if (isApproved || !previewId) {
-      console.log("CANCELLED - already approved or no previewId!");
-      return;
-    }
-    
-    const approvedVersion = versions.find(v => v.id === selectedVersionId);
-    console.log("approvedVersion:", approvedVersion);
-    
+    if (isApproved || !previewId) return;
+
+    const approvedVersion = versions.find((v) => v.id === selectedVersionId);
+
     try {
-      await updateLead(previewId, {
+      await updateLeadPublic(previewId, {
         clientApproved: true,
         clientApprovedAt: new Date().toISOString(),
         clientApprovedLayoutId: selectedVersionId,
         clientApprovedLayoutName: approvedVersion?.name,
       });
-      
+
       setIsApproved(true);
       toast.success("✅ Design approved!");
     } catch (error) {
@@ -133,23 +171,17 @@ export default function WebsitePreviewPage() {
   };
 
   const handleSubmitChangeRequest = async () => {
-    console.log("handleSubmitChangeRequest CALLED!");
-    console.log("changeRequest:", changeRequest);
-    console.log("previewId:", previewId);
-    
-    if (!changeRequest.trim() || !previewId) {
-      console.log("CANCELLED - no change request or no previewId!");
-      return;
-    }
-    
+    if (!changeRequest.trim() || !previewId) return;
+
     try {
-      await updateLead(previewId, {
+      await updateLeadPublic(previewId, {
         clientChangeRequest: changeRequest,
         clientChangeRequestedAt: new Date().toISOString(),
       });
-      
+
       setShowChangeRequestModal(false);
       setChangeRequest("");
+      setChangeRequestSubmitted(true);
       toast.success("✅ Change request submitted!");
     } catch (error) {
       console.error("Error saving change request:", error);
@@ -266,8 +298,15 @@ export default function WebsitePreviewPage() {
           </div>
         )}
 
+        {/* Placeholder disclaimer */}
+        <div className="border-b border-amber-200 bg-amber-50 px-4 py-3">
+          <p className="mx-auto max-w-7xl text-center text-sm text-amber-800">
+            Images and content shown are sample placeholders — final version will use your actual photos, branding, and business details.
+          </p>
+        </div>
+
         {/* Main Preview */}
-        <main className="p-0">
+        <main className="p-0 pb-24">
           <WebsitePreview
             key={`${localLayout?.templateKey}-${localLayout?.themeKey || 'light'}`}
             layout={localLayout}
@@ -277,30 +316,28 @@ export default function WebsitePreviewPage() {
           />
         </main>
 
-        {/* Footer Actions */}
-        {!isApproved && !localStorage.getItem(`clientScout_preview_status_${previewId}`)?.includes('changeRequest') ? (
-          <footer className="border-t border-gray-200 bg-white px-4 py-6">
-            <div className="mx-auto max-w-7xl">
-              <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
-                <button 
-                  onClick={handleApproveDesign}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors"
-                >
-                  <FaThumbsUp />
-                  Approve This Design
-                </button>
-                <button 
-                  onClick={() => setShowChangeRequestModal(true)}
-                  className="inline-flex items-center gap-2 px-6 py-3 border border-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  <FaEdit />
-                  Request Changes
-                </button>
-              </div>
-            </div>
-          </footer>
-        ) : localStorage.getItem(`clientScout_preview_status_${previewId}`)?.includes('changeRequest') ? (
-          /* Change Request Submitted */
+        {/* Floating action buttons */}
+        {!isApproved && !changeRequestSubmitted && (
+          <div className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 flex-col gap-2 sm:flex-row sm:items-center">
+            <button
+              onClick={handleApproveDesign}
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-green-600 px-6 py-3.5 text-sm font-semibold text-white shadow-xl ring-4 ring-green-600/20 transition-transform hover:scale-[1.02] hover:bg-green-700"
+            >
+              <FaThumbsUp className="h-4 w-4" />
+              Approve This Design
+            </button>
+            <button
+              onClick={() => setShowChangeRequestModal(true)}
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-gray-200 bg-white/95 px-6 py-3.5 text-sm font-semibold text-gray-700 shadow-xl ring-4 ring-black/5 backdrop-blur-sm transition-transform hover:scale-[1.02] hover:bg-gray-50"
+            >
+              <FaEdit className="h-4 w-4" />
+              Request Changes
+            </button>
+          </div>
+        )}
+
+        {/* Status banners */}
+        {changeRequestSubmitted && !isApproved ? (
           <footer className="border-t border-gray-200 bg-gradient-to-r from-amber-500 to-orange-600 text-white px-4 py-12">
             <div className="mx-auto max-w-4xl text-center">
               <FaEdit className="w-16 h-16 mx-auto mb-6 opacity-90" />
@@ -315,8 +352,7 @@ export default function WebsitePreviewPage() {
               </p>
             </div>
           </footer>
-        ) : (
-          /* Live Website Potential Section (Approved) */
+        ) : isApproved ? (
           <footer className="border-t border-gray-200 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-12">
             <div className="mx-auto max-w-4xl text-center">
               <FaThumbsUp className="w-16 h-16 mx-auto mb-6 opacity-90" />
@@ -331,11 +367,11 @@ export default function WebsitePreviewPage() {
               </p>
             </div>
           </footer>
-        )}
+        ) : null}
 
         {/* Change Request Modal */}
         {showChangeRequestModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 p-4">
             <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
               <div className="p-6">
                 <h3 className="text-xl font-bold text-gray-900 mb-4">Request Changes</h3>

@@ -140,6 +140,22 @@ export interface SuggestedLayout {
   heroVariant: HeroVariant;
 }
 
+export interface SuggestedLayoutWithRationale extends SuggestedLayout {
+  rationale?: string;
+}
+
+export interface WebsiteObservations {
+  performanceIssues?: string[];
+  trustIssues?: string[];
+  conversionIssues?: string[];
+}
+
+export interface DesignFix {
+  category: string;
+  issue: string;
+  fix: string;
+}
+
 const industryRules: Array<{ match: RegExp; template: TemplateKey; theme: ThemeKey }> = [
   { match: /agency|creative|design|marketing|media|startup|software|technology|tech/i, template: "creative", theme: "startup" },
   { match: /education|training|academy|school|coaching|tutoring|learning/i, template: "corporate", theme: "warm" },
@@ -147,6 +163,126 @@ const industryRules: Array<{ match: RegExp; template: TemplateKey; theme: ThemeK
   { match: /finance|legal|consulting|medical|health|real estate|insurance|construction/i, template: "corporate", theme: "dark" },
   { match: /fashion|luxury|jewelry|boutique|hotel|hospitality/i, template: "creative", theme: "luxury" },
 ];
+
+function suggestFromIndustry(industry?: string, businessType?: string): SuggestedLayoutWithRationale {
+  const normalized = `${industry || ""} ${businessType || ""}`.trim();
+  const rule = industryRules.find((item) => item.match.test(normalized));
+  const template: TemplateKey = rule?.template || "corporate";
+  const theme: ThemeKey = rule?.theme || "light";
+  const heroVariant: HeroVariant = getTemplate(template).heroVariant[0] || "centered";
+
+  return {
+    templateKey: getLegacyTemplateKey(template),
+    themeKey: theme,
+    heroVariant,
+    rationale: "Tailored to your industry and business type",
+  };
+}
+
+function countIssues(observations: WebsiteObservations | undefined, key: keyof WebsiteObservations) {
+  return observations?.[key]?.length || 0;
+}
+
+export function suggestLayoutFromAnalysis(
+  industry?: string,
+  businessType?: string,
+  websiteObservations?: WebsiteObservations
+): SuggestedLayoutWithRationale {
+  const trust = countIssues(websiteObservations, "trustIssues");
+  const conversion = countIssues(websiteObservations, "conversionIssues");
+  const performance = countIssues(websiteObservations, "performanceIssues");
+  const hasAudit = trust + conversion + performance > 0;
+
+  if (!hasAudit) {
+    return suggestFromIndustry(industry, businessType);
+  }
+
+  if (conversion >= 2 || (conversion >= 1 && trust >= 1)) {
+    return {
+      templateKey: "modern-business",
+      themeKey: "startup",
+      heroVariant: "centered",
+      rationale: "Clear CTAs and conversion-focused layout to fix weak calls-to-action",
+    };
+  }
+
+  if (trust >= 2 || trust >= 1) {
+    return {
+      templateKey: "modern-business",
+      themeKey: "light",
+      heroVariant: "left-image",
+      rationale: "Professional, trust-building design with strong social proof",
+    };
+  }
+
+  if (performance >= 1) {
+    return {
+      templateKey: "minimal-fast",
+      themeKey: "light",
+      heroVariant: "centered",
+      rationale: "Clean, fast-loading minimal layout for better performance",
+    };
+  }
+
+  if (conversion >= 1) {
+    return {
+      templateKey: "modern-business",
+      themeKey: "warm",
+      heroVariant: "centered",
+      rationale: "Warm, inviting design with prominent contact actions",
+    };
+  }
+
+  return suggestFromIndustry(industry, businessType);
+}
+
+export function suggestAlternativeLayoutFromAnalysis(
+  industry?: string,
+  businessType?: string,
+  websiteObservations?: WebsiteObservations
+): SuggestedLayoutWithRationale {
+  const recommended = suggestLayoutFromAnalysis(industry, businessType, websiteObservations);
+
+  const alternatives: Record<LegacyTemplateKey, { templateKey: LegacyTemplateKey; themeKey: ThemeKey }> = {
+    "modern-business": { templateKey: "premium-dark", themeKey: "dark" },
+    "premium-dark": { templateKey: "local-bright", themeKey: "warm" },
+    "local-bright": { templateKey: "modern-business", themeKey: "startup" },
+    "minimal-fast": { templateKey: "premium-dark", themeKey: "luxury" },
+    "ecommerce-store": { templateKey: "premium-dark", themeKey: "dark" },
+  };
+
+  const alt = alternatives[recommended.templateKey] || {
+    templateKey: "premium-dark" as LegacyTemplateKey,
+    themeKey: "dark" as ThemeKey,
+  };
+
+  return {
+    templateKey: alt.templateKey,
+    themeKey: alt.themeKey,
+    heroVariant: "large-visual",
+    rationale: "Bold alternative style for comparison",
+  };
+}
+
+export function getDesignFixesFromAnalysis(websiteObservations?: WebsiteObservations): DesignFix[] {
+  if (!websiteObservations) return [];
+
+  const fixes: DesignFix[] = [];
+
+  (websiteObservations.trustIssues || []).slice(0, 2).forEach((issue) => {
+    fixes.push({ category: "Trust", issue, fix: "Add testimonials, credentials, and clearer contact info" });
+  });
+
+  (websiteObservations.conversionIssues || []).slice(0, 2).forEach((issue) => {
+    fixes.push({ category: "Conversion", issue, fix: "Stronger CTAs, clearer hero message, and simpler user flow" });
+  });
+
+  (websiteObservations.performanceIssues || []).slice(0, 2).forEach((issue) => {
+    fixes.push({ category: "Performance", issue, fix: "Lighter layout, optimized structure, and mobile-first design" });
+  });
+
+  return fixes.slice(0, 5);
+}
 
 export function suggestLayoutFor(industry?: string, businessType?: string): SuggestedLayout {
   const normalized = `${industry || ""} ${businessType || ""}`.trim();
@@ -203,6 +339,9 @@ export default {
   getTheme,
   getLegacyTemplateKey,
   suggestLayoutFor,
+  suggestLayoutFromAnalysis,
+  suggestAlternativeLayoutFromAnalysis,
+  getDesignFixesFromAnalysis,
   TEMPLATES,
   THEMES,
 };

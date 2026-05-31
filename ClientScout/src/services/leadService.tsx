@@ -66,6 +66,7 @@ export interface Lead {
     body: string;
     generatedAt: string;
   };
+  designsPreparedAt?: string;
   generatedLayout?: {
     templateKey: LegacyTemplateKey;
     themeKey?: ThemeKey;
@@ -215,8 +216,13 @@ export const generateEmailDraft = async (id: string): Promise<Lead> => {
   return res.data;
 };
 
-export const sendLeadEmail = async (id: string, subject: string, body: string): Promise<any> => {
-  const res = await api.post(`/leads/${id}/send-email`, { subject, body });
+export const sendLeadEmail = async (
+  id: string,
+  subject: string,
+  body: string,
+  designPreviewUrl?: string
+): Promise<any> => {
+  const res = await api.post(`/leads/${id}/send-email`, { subject, body, designPreviewUrl });
   return res.data;
 };
 
@@ -237,5 +243,16 @@ export const logContact = async (id: string): Promise<Lead> => {
 
 export const getDashboardStats = async () => {
   const res = await api.get("/leads/stats");
+  return res.data;
+};
+
+/* PUBLIC LEAD ENDPOINTS - No authentication required */
+export const getLeadByIdPublic = async (id: string): Promise<Lead> => {
+  const res = await api.get(`/leads/public/${id}`);
+  return res.data;
+};
+
+export const updateLeadPublic = async (id: string, updates: Partial<LeadFormData>): Promise<Lead> => {
+  const res = await api.put(`/leads/public/${id}`, updates);
   return res.data;
 };

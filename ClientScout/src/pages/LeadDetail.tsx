@@ -2,10 +2,23 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { getLeadById, updateLead, analyzeLead, generateEmailDraft, sendLeadEmail, generateWhatsAppDraft, generateLayout, logContact, Lead, LayoutVersion } from "../services/leadService";
-import { suggestLayoutFor, suggestAlternativeLayoutFor } from "../services/templateEngine";
-import WebsitePreview from "../components/leads/WebsitePreview";
+import DesignSummaryCard from "../components/leads/DesignSummaryCard";
+import DesignShareLinks from "../components/leads/DesignShareLinks";
+import {
+  isVersionClientApproved,
+  buildLayoutVersionsFromLead,
+  buildLeadDesignShareUrl,
+  WHATSAPP_DESIGN_LINK_NOTE,
+  DESIGN_PLACEHOLDER_NOTE,
+  leadHasWebsite,
+  hasPreparedDesigns,
+  hasEmailDraft,
+  hasWhatsAppDraft,
+  enrichLeadWithDesigns,
+} from "../components/leads/designPreviewUtils";
+import AnalysisDesignFixes from "../components/leads/AnalysisDesignFixes";
 import StatusBadge from "../components/common/StatusBadge";
-import { FaEnvelope, FaWhatsapp, FaPhoneAlt, FaMagic, FaCopy, FaCheckCircle, FaCalendarPlus, FaRegPaperPlane, FaSync, FaThumbsUp, FaStar, FaEdit, FaDesktop } from "react-icons/fa";
+import { FaEnvelope, FaWhatsapp, FaPhoneAlt, FaMagic, FaCopy, FaCheckCircle, FaCalendarPlus, FaRegPaperPlane, FaSync, FaThumbsUp, FaEdit, FaDesktop, FaArrowRight, FaLayerGroup } from "react-icons/fa";
 import { openWhatsApp, openCall } from "../services/outreachService";
 import { Modal } from "../components/ui/modal";
 import { ProfileSkeleton } from "../components/ui/Skeleton";
@@ -44,81 +57,7 @@ const LeadDetail = () => {
     if (!id) return;
     try {
       setLoading(true);
-      let data = await getLeadById(id);
-      
-      // For backward compatibility: if we have generatedLayout but no layoutVersions,
-      // create layoutVersions locally with both designs
-      if (!data.layoutVersions || data.layoutVersions.length === 0) {
-        if (data.generatedLayout) {
-          // Get recommendations
-          const recommendedSuggestion = suggestLayoutFor(data.industry, data.businessType);
-          const alternativeSuggestion = suggestAlternativeLayoutFor(data.industry, data.businessType);
-          
-          // Ensure content has all required sections
-          const ensureContent = (content: any) => ({
-            hero: content.hero || {
-              headline: `${data.businessName} — We Help You Grow`,
-              tagline: "AI-generated website concept",
-              primaryCta: "Get Started",
-              secondaryCta: "Learn More",
-            },
-            about: content.about || {
-              title: `About ${data.businessName}`,
-              description: "We provide exceptional services to help your business succeed.",
-            },
-            services: content.services && content.services.length ? content.services : [
-              { name: "Service One", description: "Description of service one." },
-              { name: "Service Two", description: "Description of service two." },
-              { name: "Service Three", description: "Description of service three." },
-            ],
-            testimonials: content.testimonials && content.testimonials.length ? content.testimonials : [
-              { name: "A Happy Customer", quote: "They helped our business grow tremendously." },
-            ],
-            contact: content.contact || {
-              phone: "",
-              address: "",
-              ctaText: "Contact Us",
-            },
-            gallery: content.gallery || [],
-          });
-          
-          const safeContent = ensureContent(data.generatedLayout.content);
-          
-          // Create recommended version
-          const recommendedVersion: LayoutVersion = {
-            id: `recommended-${Date.now()}`,
-            name: "Recommended Design",
-            description: "Professional, trust-building design perfect for conversions",
-            templateKey: recommendedSuggestion.templateKey,
-            themeKey: recommendedSuggestion.themeKey,
-            content: safeContent,
-            pitchMessage: data.generatedLayout.pitchMessage,
-            previewUrl: data.generatedLayout.previewUrl,
-            generatedAt: new Date().toISOString(),
-            isRecommended: true,
-          };
-
-          // Create alternative version
-          const alternativeVersion: LayoutVersion = {
-            id: `alternative-${Date.now()}`,
-            name: "Alternative Style",
-            description: "Modern, bold design with a more creative feel",
-            templateKey: alternativeSuggestion.templateKey,
-            themeKey: alternativeSuggestion.themeKey,
-            content: safeContent,
-            pitchMessage: data.generatedLayout.pitchMessage,
-            previewUrl: data.generatedLayout.previewUrl,
-            generatedAt: new Date().toISOString(),
-            isRecommended: false,
-          };
-
-          data = {
-            ...data,
-            layoutVersions: [recommendedVersion, alternativeVersion],
-          };
-        }
-      }
-      
+      const data = enrichLeadWithDesigns(await getLeadById(id));
       setLead(data);
       setNotes(data.notes || "");
     } catch (error) {
@@ -146,8 +85,7 @@ const LeadDetail = () => {
     if (!id) return;
     try {
       setAnalyzing(true);
-      const updatedLead = await analyzeLead(id);
-      setLead(updatedLead);
+      setLead(enrichLeadWithDesigns(await analyzeLead(id)));
       toast.success("AI Analysis complete!");
       refreshUser();
     } catch (error: any) {
@@ -162,8 +100,7 @@ const LeadDetail = () => {
     if (!id) return;
     try {
       setGeneratingEmail(true);
-      const updatedLead = await generateEmailDraft(id);
-      setLead(updatedLead);
+      setLead(enrichLeadWithDesigns(await generateEmailDraft(id)));
       toast.success("Email draft generated!");
       refreshUser();
     } catch (error: any) {
@@ -175,15 +112,15 @@ const LeadDetail = () => {
   };
 
   const handleSendEmail = async () => {
-    if (!id || !lead?.emailDraft) return;
+    if (!id || !hasEmailDraft(lead)) return;
     
     try {
       setSendingEmail(true);
-      // Use edited values if available, otherwise use original draft values
       const subjectToSend = isEditingEmail ? editedEmailSubject : lead.emailDraft.subject;
       const bodyToSend = isEditingEmail ? editedEmailBody : lead.emailDraft.body;
-      
-      await sendLeadEmail(id, subjectToSend, bodyToSend);
+      const shareUrl = hasPreparedDesigns(lead) ? buildLeadDesignShareUrl(id) : undefined;
+
+      await sendLeadEmail(id, subjectToSend, bodyToSend, shareUrl);
       toast.success("Email sent successfully!");
       setIsEmailModalOpen(false);
       // Refresh lead to update contact history
@@ -201,8 +138,7 @@ const LeadDetail = () => {
     if (!id) return;
     try {
       setGeneratingWhatsApp(true);
-      const updatedLead = await generateWhatsAppDraft(id);
-      setLead(updatedLead);
+      setLead(enrichLeadWithDesigns(await generateWhatsAppDraft(id)));
       toast.success("WhatsApp draft generated!");
       refreshUser();
     } catch (error: any) {
@@ -217,22 +153,19 @@ const LeadDetail = () => {
     if (!id) return;
     try {
       setGeneratingLayout(true);
-      
-      // Generate base layout if needed
-      let leadToUse = lead;
-      if (!lead?.generatedLayout) {
-        leadToUse = await generateLayout(id);
-        setLead(leadToUse);
-      }
-      
-      toast.success("Preparing design presentation...");
-      
-      // Navigate to presentation page (which generates both versions)
+      const leadToUse = await generateLayout(id);
+      setLead(enrichLeadWithDesigns(leadToUse));
+      toast.success("Design presentation ready!");
       navigate(`/leads/${id}/presentation`);
       refreshUser();
     } catch (error: any) {
       console.error("Error generating layout:", error);
-      toast.error(error.response?.data?.message || "Error generating website layout.");
+      const msg = error.response?.data?.message || "Error generating website layout.";
+      if (error.response?.data?.code === "ANALYSIS_REQUIRED") {
+        toast.error(msg, { duration: 5000 });
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setGeneratingLayout(false);
     }
@@ -242,7 +175,7 @@ const LeadDetail = () => {
     if (!id) return;
     try {
       const updatedLead = await logContact(id);
-      setLead(updatedLead);
+      setLead(enrichLeadWithDesigns(updatedLead));
       toast.success("Contact logged! Next follow-up set for 3 days.");
     } catch (error) {
       console.error("Error logging contact:", error);
@@ -277,7 +210,7 @@ const LeadDetail = () => {
           generatedAt: lead.emailDraft?.generatedAt || new Date().toISOString(),
         },
       });
-      setLead(updatedLead);
+      setLead(enrichLeadWithDesigns(updatedLead));
       setIsEditingEmail(false);
       toast.success("Email draft updated!");
     } catch (error) {
@@ -310,7 +243,7 @@ const LeadDetail = () => {
           generatedAt: lead.whatsappDraft?.generatedAt || new Date().toISOString(),
         },
       });
-      setLead(updatedLead);
+      setLead(enrichLeadWithDesigns(updatedLead));
       setIsEditingWhatsApp(false);
       toast.success("WhatsApp draft updated!");
     } catch (error) {
@@ -319,9 +252,14 @@ const LeadDetail = () => {
     }
   };
 
-  const handleSendWhatsApp = () => {
-    if (!lead) return;
-    openWhatsApp({ lead, customMessage: editedWhatsAppBody || lead.whatsappDraft?.body });
+  const handleSendWhatsApp = (includeDesignLink = true) => {
+    if (!lead || !id) return;
+    let message = editedWhatsAppBody || lead.whatsappDraft?.body || "";
+    const shareUrl = hasPreparedDesigns(lead) ? buildLeadDesignShareUrl(id) : null;
+    if (includeDesignLink && shareUrl && !message.includes("/preview?")) {
+      message = `${message}\n\n${WHATSAPP_DESIGN_LINK_NOTE}\n${shareUrl}\n\n${DESIGN_PLACEHOLDER_NOTE}`;
+    }
+    openWhatsApp({ lead, customMessage: message });
     setIsWhatsAppModalOpen(false);
   };
 
@@ -378,6 +316,15 @@ const LeadDetail = () => {
       </div>
     );
   }
+
+  const layoutVersions = hasPreparedDesigns(lead) ? buildLayoutVersionsFromLead(lead) : [];
+  const designShareUrl = id && hasPreparedDesigns(lead) ? buildLeadDesignShareUrl(id) : null;
+  const hasDesigns = Boolean(hasPreparedDesigns(lead) && designShareUrl);
+  const emailDraftReady = hasEmailDraft(lead);
+  const whatsappDraftReady = hasWhatsAppDraft(lead);
+  const needsAnalysisBeforeDesign =
+    leadHasWebsite(lead.website) && !lead.aiGeneratedAt;
+  const hasWebsiteAnalysis = Boolean(lead.websiteObservations && lead.aiGeneratedAt);
 
   return (
     <div className="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-8">
@@ -503,7 +450,7 @@ const LeadDetail = () => {
           </div>
 
           <div className="space-y-4">
-            {!lead.emailDraft ? (
+            {!emailDraftReady ? (
               <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-8 text-center dark:bg-gray-800">
                 <p className="mb-4 text-gray-500">No email draft generated yet.</p>
                 <button
@@ -556,6 +503,10 @@ const LeadDetail = () => {
                     </div>
                   )}
                 </div>
+
+                {hasDesigns && designShareUrl && (
+                  <DesignShareLinks shareUrl={designShareUrl} />
+                )}
 
                 <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t dark:border-gray-700">
                   <div className="flex gap-2">
@@ -625,7 +576,7 @@ const LeadDetail = () => {
           </div>
 
           <div className="space-y-4">
-            {!lead.whatsappDraft ? (
+            {!whatsappDraftReady ? (
               <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-8 text-center dark:bg-gray-800">
                 <p className="mb-4 text-gray-500">No WhatsApp draft generated yet.</p>
                 <button
@@ -662,6 +613,10 @@ const LeadDetail = () => {
                   )}
                 </div>
 
+                {hasDesigns && designShareUrl && (
+                  <DesignShareLinks shareUrl={designShareUrl} />
+                )}
+
                 <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t dark:border-gray-700">
                   <div className="flex gap-2">
                     {!isEditingWhatsApp && (
@@ -697,7 +652,7 @@ const LeadDetail = () => {
                       </button>
                     ) : (
                       <button
-                        onClick={handleSendWhatsApp}
+                        onClick={() => handleSendWhatsApp(true)}
                         className="flex items-center gap-2 rounded-lg bg-green-600 px-6 py-2 text-sm font-medium text-white hover:bg-green-700"
                       >
                         <FaWhatsapp /> Send via WhatsApp
@@ -865,6 +820,31 @@ const LeadDetail = () => {
                 </div>
               )}
 
+              {needsAnalysisBeforeDesign && (
+                <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/30">
+                  <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+                    Analyze their website first
+                  </p>
+                  <p className="mt-1 text-sm text-amber-800 dark:text-amber-300">
+                    This lead has a website URL. Run <strong>Analyze with AI</strong> above so new designs
+                    can fix trust, conversion, and performance issues found on their current site.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleAnalyze}
+                    disabled={analyzing}
+                    className="mt-3 inline-flex items-center gap-2 rounded-lg bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50"
+                  >
+                    <FaMagic className={analyzing ? "animate-spin" : ""} />
+                    {analyzing ? "Analyzing..." : "Analyze with AI"}
+                  </button>
+                </div>
+              )}
+
+              {hasWebsiteAnalysis && (
+                <AnalysisDesignFixes observations={lead.websiteObservations} />
+              )}
+
               <div className="space-y-2">
                 <p className="mb-2 text-sm font-medium text-gray-500 dark:text-gray-400">
                   AI Summary & Pitch
@@ -877,8 +857,13 @@ const LeadDetail = () => {
                   {!lead.layoutVersions || lead.layoutVersions.length === 0 ? (
                     <button
                       onClick={handleGenerateLayout}
-                      disabled={generatingLayout}
-                      className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-2 text-sm font-medium text-white shadow-md transition-all hover:opacity-90 disabled:opacity-50"
+                      disabled={generatingLayout || needsAnalysisBeforeDesign}
+                      title={
+                        needsAnalysisBeforeDesign
+                          ? "Run Analyze with AI first"
+                          : undefined
+                      }
+                      className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-2 text-sm font-medium text-white shadow-md transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <FaMagic className={generatingLayout ? "animate-spin" : ""} />
                       {generatingLayout ? "Generating Designs..." : "Prepare 2 Website Designs"}
@@ -894,8 +879,13 @@ const LeadDetail = () => {
                       </button>
                       <button
                         onClick={handleGenerateLayout}
-                        disabled={generatingLayout}
-                        className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+                        disabled={generatingLayout || needsAnalysisBeforeDesign}
+                        title={
+                          needsAnalysisBeforeDesign
+                            ? "Run Analyze with AI first"
+                            : undefined
+                        }
+                        className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
                       >
                         <FaSync className={generatingLayout ? "animate-spin" : ""} />
                         {generatingLayout ? "Regenerating..." : "Regenerate Designs"}
@@ -930,7 +920,7 @@ const LeadDetail = () => {
                     <FaEnvelope className="text-blue-600" /> AI Email Draft
                   </h4>
                   <div className="flex gap-3">
-                    {!isEditingEmail && lead.emailDraft && (
+                    {!isEditingEmail && emailDraftReady && (
                       <button
                         onClick={handleEditEmail}
                         className="text-sm text-gray-600 hover:underline dark:text-gray-400"
@@ -952,7 +942,7 @@ const LeadDetail = () => {
                   </div>
                 </div>
 
-                {lead.emailDraft ? (
+                {emailDraftReady ? (
                   <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-600 dark:bg-gray-700">
                     {isEditingEmail ? (
                       <div className="space-y-4">
@@ -1033,6 +1023,9 @@ const LeadDetail = () => {
                             <FaCopy />
                           </button>
                         </div>
+                        {hasDesigns && designShareUrl && (
+                          <DesignShareLinks shareUrl={designShareUrl} compact />
+                        )}
                         <div className="mt-4 flex justify-end">
                           <button
                             onClick={handleSendEmail}
@@ -1065,7 +1058,7 @@ const LeadDetail = () => {
                     <FaWhatsapp className="text-green-600" /> AI WhatsApp Draft
                   </h4>
                   <div className="flex gap-3">
-                    {!isEditingWhatsApp && lead.whatsappDraft && (
+                    {!isEditingWhatsApp && whatsappDraftReady && (
                       <button
                         onClick={handleEditWhatsApp}
                         className="text-sm text-gray-600 hover:underline dark:text-gray-400"
@@ -1087,7 +1080,7 @@ const LeadDetail = () => {
                   </div>
                 </div>
 
-                {lead.whatsappDraft ? (
+                {whatsappDraftReady ? (
                   <div className="relative rounded-lg border border-green-200 bg-green-50 p-4 dark:border-gray-600 dark:bg-gray-700">
                     {isEditingWhatsApp ? (
                       <div className="space-y-4">
@@ -1134,6 +1127,9 @@ const LeadDetail = () => {
                         </button>
                       </>
                     )}
+                    {hasDesigns && designShareUrl && !isEditingWhatsApp && (
+                      <DesignShareLinks shareUrl={designShareUrl} compact />
+                    )}
                   </div>
                 ) : (
                   <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4 text-center dark:bg-gray-800">
@@ -1145,193 +1141,111 @@ const LeadDetail = () => {
               </div>
 
               <div>
-                <div className="mb-2 flex items-center justify-between">
+                <div className="mb-3 flex items-center justify-between gap-3">
                   <h4 className="flex items-center gap-2 font-semibold text-gray-800 dark:text-white">
                     <FaDesktop className="text-blue-600" /> Website Designs
                   </h4>
-                  <div className="flex gap-3 items-center">
-                    {/* Client Status Indicator */}
-                    {(function() {
-                      const savedStatus = localStorage.getItem(`clientScout_preview_status_${id}`);
-                      if (!savedStatus) return null;
-                      try {
-                        const status = JSON.parse(savedStatus);
-                        if (status.isApproved) {
-                          return (
-                            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-100 text-green-800 rounded-full text-sm font-semibold">
-                              <FaCheckCircle /> Approved
-                            </div>
-                          );
-                        }
-                        if (status.changeRequest) {
-                          return (
-                            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-100 text-amber-800 rounded-full text-sm font-semibold">
-                              <FaEdit /> Changes Requested
-                            </div>
-                          );
-                        }
-                      } catch(e) {
-                        return null;
-                      }
-                      return null;
-                    })()}
-                    {lead.generatedLayout && (
+                  <div className="flex items-center gap-2">
+                    {lead.clientApproved && (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">
+                        <FaCheckCircle className="h-3 w-3" /> Approved
+                      </span>
+                    )}
+                    {!lead.clientApproved && lead.clientChangeRequest && (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-500/15 dark:text-amber-400">
+                        <FaEdit className="h-3 w-3" /> Changes Requested
+                      </span>
+                    )}
+                    {hasPreparedDesigns(lead) && (
                       <button
                         onClick={() => navigate(`/leads/${id}/presentation`)}
-                        className="text-sm text-blue-600 hover:underline dark:text-blue-400"
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-blue-700"
                       >
                         View Presentation
+                        <FaArrowRight className="h-3 w-3" />
                       </button>
                     )}
                   </div>
                 </div>
 
-                {/* Change Request Details */}
-                {(function() {
-                  const savedStatus = localStorage.getItem(`clientScout_preview_status_${id}`);
-                  if (!savedStatus) return null;
-                  try {
-                    const status = JSON.parse(savedStatus);
-                    if (status.changeRequest) {
-                      return (
-                        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-900/50">
-                          <p className="text-xs font-bold uppercase tracking-wide text-amber-700 dark:text-amber-300 mb-2">
-                            Change Request from Client
-                          </p>
-                          <p className="text-sm text-amber-900 dark:text-amber-100 whitespace-pre-wrap">
-                            {status.changeRequest}
-                          </p>
-                          {status.requestedAt && (
-                            <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
-                              Received: {new Date(status.requestedAt).toLocaleString()}
-                            </p>
-                          )}
-                        </div>
-                      );
-                    }
-                  } catch(e) {
-                    return null;
-                  }
-                  return null;
-                })()}
+                {lead.clientChangeRequest && (
+                  <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-700/50 dark:bg-amber-900/20">
+                    <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-amber-700 dark:text-amber-300">
+                      Change Request from Client
+                    </p>
+                    <p className="whitespace-pre-wrap text-sm text-amber-900 dark:text-amber-100">
+                      {lead.clientChangeRequest}
+                    </p>
+                    {lead.clientChangeRequestedAt && (
+                      <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+                        Received: {new Date(lead.clientChangeRequestedAt).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                )}
 
-                {/* Approval Details */}
-                {(function() {
-                  const savedStatus = localStorage.getItem(`clientScout_preview_status_${id}`);
-                  if (!savedStatus) return null;
-                  try {
-                    const status = JSON.parse(savedStatus);
-                    if (status.isApproved) {
-                      return (
-                        <div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-700 dark:bg-green-900/50">
-                          <p className="text-xs font-bold uppercase tracking-wide text-green-700 dark:text-green-300 mb-2">
-                            Design Approved by Client
-                          </p>
-                          <p className="text-sm text-green-900 dark:text-green-100 font-semibold mb-1">
-                            {status.approvedVersionName || "Selected Design"}
-                          </p>
-                          <p className="text-sm text-green-800 dark:text-green-200">
-                            The client has approved this design!
-                          </p>
-                          {status.approvedAt && (
-                            <p className="mt-2 text-xs text-green-600 dark:text-green-400">
-                              Approved: {new Date(status.approvedAt).toLocaleString()}
-                            </p>
-                          )}
-                        </div>
-                      );
-                    }
-                  } catch(e) {
-                    return null;
-                  }
-                  return null;
-                })()}
+                {lead.clientApproved && (
+                  <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-700/50 dark:bg-emerald-900/20">
+                    <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+                      Design Approved by Client
+                    </p>
+                    <p className="mb-1 text-sm font-semibold text-emerald-900 dark:text-emerald-100">
+                      {lead.clientApprovedLayoutName || "Selected Design"}
+                    </p>
+                    <p className="text-sm text-emerald-800 dark:text-emerald-200">
+                      The client has approved this design.
+                    </p>
+                    {lead.clientApprovedAt && (
+                      <p className="mt-2 text-xs text-emerald-600 dark:text-emerald-400">
+                        Approved: {new Date(lead.clientApprovedAt).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                )}
 
-                {lead.generatedLayout ? (
-                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-600 dark:bg-gray-700">
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {hasPreparedDesigns(lead) ? (
+                  <div className="space-y-3">
+                    {designShareUrl && (
+                      <DesignShareLinks shareUrl={designShareUrl} />
+                    )}
+                    <div className="rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900/50">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       {(() => {
-                        const recommended = lead.layoutVersions?.find(v => v.isRecommended);
-                        const alternative = lead.layoutVersions?.find(v => !v.isRecommended);
-                        
-                        const selectedVersionId = 
-                          lead.selectedLayoutId || 
-                          localStorage.getItem(`lead_${id}_selectedLayout`) || 
-                          (lead.generatedLayout as any).id;
-                        
-                        const displayVersions: LayoutVersion[] = [];
-                        if (recommended) displayVersions.push(recommended);
-                        if (alternative) displayVersions.push(alternative);
-                        
-                        if (displayVersions.length === 0 && lead.generatedLayout) {
-                          displayVersions.push(lead.generatedLayout as any);
-                        }
-                        
-                        return displayVersions.map((version) => {
-                          const isApproved = lead?.clientApproved && version.id === lead.clientApprovedLayoutId;
+                        const selectedVersionId =
+                          lead.selectedLayoutId ||
+                          localStorage.getItem(`lead_${id}_selectedLayout`) ||
+                          layoutVersions.find((v) => v.isRecommended)?.id ||
+                          layoutVersions[0]?.id;
+
+                        return layoutVersions.map((version) => {
+                          const isApproved = isVersionClientApproved(version, lead);
                           const isSelected = !isApproved && version.id === selectedVersionId;
-                          
+
                           return (
-                            <div
+                            <DesignSummaryCard
                               key={version.id}
-                              className={`relative rounded-xl overflow-hidden border-2 transition-all ${
-                                isApproved
-                                  ? "border-green-500 shadow-md"
-                                  : isSelected
-                                  ? "border-blue-500 shadow-md"
-                                  : "border-gray-200 hover:border-gray-300 dark:border-gray-600"
-                              }`}
-                            >
-                              {version.isRecommended && (
-                                <div className="absolute top-2 left-2 z-10">
-                                  <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow flex items-center gap-1">
-                                    <FaStar className="text-yellow-300 text-xs" />
-                                    Recommended
-                                  </div>
-                                </div>
-                              )}
-                              {isApproved && (
-                                <div className="absolute top-2 right-2 z-10">
-                                  <div className="bg-green-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow flex items-center gap-1">
-                                    <FaCheckCircle className="text-xs" />
-                                    Approved
-                                  </div>
-                                </div>
-                              )}
-                              {isSelected && (
-                                <div className="absolute top-2 right-2 z-10">
-                                  <div className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow flex items-center gap-1">
-                                    <FaCheckCircle className="text-xs" />
-                                    Selected
-                                  </div>
-                                </div>
-                              )}
-                              <div className="bg-white p-3 border-b border-gray-100 dark:bg-gray-800 dark:border-gray-600">
-                                <p className="font-semibold text-gray-800 dark:text-white text-sm">
-                                  {version.name}
-                                </p>
-                              </div>
-                              <div className="bg-gray-100 aspect-video overflow-hidden dark:bg-gray-900">
-                                <div className="h-full overflow-y-auto">
-                                  <WebsitePreview
-                                    key={`thumb-${version.id}`}
-                                    layout={version}
-                                    businessName={lead.businessName}
-                                    industry={lead.industry}
-                                    businessType={lead.businessType}
-                                  />
-                                </div>
-                              </div>
-                            </div>
+                              version={version}
+                              businessName={lead.businessName}
+                              industry={lead.industry}
+                              businessType={lead.businessType}
+                              isSelected={isSelected}
+                              isApproved={isApproved}
+                              onClick={() => navigate(`/leads/${id}/presentation`)}
+                            />
                           );
                         });
                       })()}
                     </div>
+                    </div>
                   </div>
                 ) : (
-                  <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4 text-center dark:bg-gray-800">
-                    <p className="text-sm text-gray-500">
-                      No website designs generated yet.
+                  <div className="flex flex-col items-center rounded-xl border border-dashed border-gray-300 py-10 text-center dark:border-gray-600 dark:bg-gray-800/50">
+                    <FaLayerGroup className="mb-3 h-8 w-8 text-gray-300 dark:text-gray-600" />
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                      No website designs generated yet
+                    </p>
+                    <p className="mt-1 text-xs text-gray-400">
+                      Use the button above to prepare 2 website designs
                     </p>
                   </div>
                 )}

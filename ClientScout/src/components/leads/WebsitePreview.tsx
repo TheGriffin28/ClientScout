@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Lead, LayoutVersion } from "../../services/leadService";
 import {
   FaFacebook,
@@ -47,6 +47,30 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({
   industry,
   businessType,
 }) => {
+  const previewRootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const root = previewRootRef.current;
+    if (!root || !layout) return;
+
+    const sections = root.querySelectorAll<HTMLElement>(".preview-section-animate");
+    sections.forEach((section) => section.classList.remove("is-revealed"));
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("is-revealed");
+          }
+        });
+      },
+      { threshold: 0.12, rootMargin: "0px 0px -40px 0px" }
+    );
+
+    sections.forEach((section) => observer.observe(section));
+    return () => observer.disconnect();
+  }, [layout?.templateKey, layout?.themeKey, layout]);
+
   if (!layout) return null;
 
   // Ensure all content sections exist with defaults
@@ -960,11 +984,15 @@ const WebsitePreview: React.FC<WebsitePreviewProps> = ({
   };
 
   return (
-    <div className="font-sans" style={previewRootStyle}>
+    <div ref={previewRootRef} className="font-sans" style={previewRootStyle}>
       {renderNavbar()}
       {structure.sectionsOrder.map((s) => {
         const renderer = sectionRenderers[s];
-        return renderer ? <div key={s}>{renderer()}</div> : null;
+        return renderer ? (
+          <div key={`${s}-${layout.templateKey}-${themeKey}`} className="preview-section-animate">
+            {renderer()}
+          </div>
+        ) : null;
       })}
     </div>
   );

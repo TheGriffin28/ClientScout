@@ -14,12 +14,18 @@ import {
   generateWhatsApp,
   generateLayout,
   logContact,
-  trackMapSearchUsage
+  trackMapSearchUsage,
+  getLeadByIdPublic,
+  updateLeadPublic
 } from "../controllers/leadController.js";
 
 import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
+
+// Public routes (no authentication required) - for preview/share links
+router.get("/public/:id", getLeadByIdPublic);
+router.put("/public/:id", updateLeadPublic);
 
 router.route("/")
   .post(protect, createLead)

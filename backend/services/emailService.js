@@ -1,40 +1,40 @@
-import dotenv from 'dotenv';
-import { Resend } from 'resend';
+import dotenv from "dotenv";
+import { Resend } from "resend";
+
 dotenv.config();
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+const defaultFrom = () =>
+  process.env.EMAIL_FROM || "ClientScout <onboarding@resend.dev>";
+
 /**
- * Send an email using Resend
- * @param {Object} options - Email options
- * @param {string} options.to - Recipient email address
- * @param {string} options.subject - Email subject
- * @param {string} options.html - Email body in HTML format
- * @param {string} [options.from] - Sender email address (e.g. "Name <email@example.com>")
- * @param {string} [options.replyTo] - Email address to use for replies
- * @returns {Promise<Object>} - Resend response
+ * Send an email via Resend.
+ * Requires RESEND_API_KEY and a verified EMAIL_FROM domain in production.
  */
 export const sendEmail = async ({ to, subject, html, from, replyTo }) => {
-  try {
-    const payload = {
-      from: from || process.env.EMAIL_FROM,
-      to,
-      subject,
-      html,
-      reply_to: replyTo,
-    };
-    
+  if (!process.env.RESEND_API_KEY) {
+    console.error("RESEND_API_KEY is not set — cannot send email");
+    throw new Error("Email service is not configured");
+  }
 
-    const { data, error } = await resend.emails.send(payload);
+  const payload = {
+    from: from || defaultFrom(),
+    to: Array.isArray(to) ? to : [to],
+    subject,
+    html,
+  };
 
-    if (error) {
-      console.error('Resend email error:', error);
-      throw error;
-    }
+  if (replyTo) {
+    payload.replyTo = replyTo;
+  }
 
-    return data;
-  } catch (error) {
-    console.error('Resend email error:', error);
+  const { data, error } = await resend.emails.send(payload);
+
+  if (error) {
+    console.error("Resend email error:", error);
     throw error;
   }
+
+  return data;
 };

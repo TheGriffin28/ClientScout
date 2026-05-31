@@ -5,6 +5,15 @@ dotenv.config();
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
+function leadHasWebsite(website) {
+  if (!website || typeof website !== "string") return false;
+  const trimmed = website.trim().toLowerCase();
+  if (!trimmed || ["n/a", "na", "none", "no", "no website", "-"].includes(trimmed)) {
+    return false;
+  }
+  return true;
+}
+
 export const analyzeWebsite = async (url, businessName) => {
   try {
     // Switching to gemini-flash-latest which is confirmed to work
@@ -78,14 +87,34 @@ export const generateEmailDraft = async (
   painPoints,
   aiSummary,
   businessType,
-  websiteObservations
+  websiteObservations,
+  hasDesigns = false,
+  website = null
 ) => {
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+    const hasWebsite = leadHasWebsite(website);
+
+    const websiteContext = hasWebsite
+      ? `Website Insights:
+- Performance Issues: ${websiteObservations?.performanceIssues?.join(", ") || "None"}
+- Trust Issues: ${websiteObservations?.trustIssues?.join(", ") || "None"}
+- Conversion Issues: ${websiteObservations?.conversionIssues?.join(", ") || "None"}`
+      : `Online Presence: This business does NOT have an existing website yet.`;
+
+    const instructions = hasWebsite
+      ? `- Choose ONLY the most impactful 1–2 website observations.
+- Position the message around website redesign + SEO + long-term digital growth.
+- You may refer to their current website and how improvements could help.
+- Explain how redesign + SEO improvements affect real business outcomes (qualified leads, authority, growth).`
+      : `- CRITICAL: This client has NO existing website. Do NOT say you reviewed their website, current website, existing site, or any website they already have.
+- Do NOT reference website performance, trust signals, or conversion issues from a site they do not have.
+- Position the message around building their first professional online presence — being found on Google, looking credible, and capturing leads online.
+- Focus on industry relevance and business growth opportunities instead of website audit findings.`;
 
     const prompt = `
-You are a senior digital growth consultant specializing in website redesign, SEO, and conversion-focused structure.
-Your role is to help businesses grow digitally by turning their websites into high-performing growth assets.
+You are a senior digital growth consultant specializing in website design, SEO, and conversion-focused structure.
+Your role is to help businesses grow digitally through a strong online presence.
 
 Write a professional, personalized cold outreach email.
 
@@ -93,11 +122,9 @@ Client Context:
 - Business Name: ${businessName}
 - Industry: ${industry || "Unknown"}
 - Business Type: ${businessType || "N/A"}
+- Has Existing Website: ${hasWebsite ? "Yes" : "No"}
 
-Website Insights:
-- Performance Issues: ${websiteObservations?.performanceIssues?.join(", ") || "None"}
-- Trust Issues: ${websiteObservations?.trustIssues?.join(", ") || "None"}
-- Conversion Issues: ${websiteObservations?.conversionIssues?.join(", ") || "None"}
+${websiteContext}
 
 Primary Business Pain Points:
 ${painPoints?.join(", ") || "General digital growth gaps"}
@@ -106,14 +133,12 @@ Strategic Insight:
 ${aiSummary || "N/A"}
 
 Instructions:
-- Choose ONLY the most impactful 1–2 website observations.
-- Position the message around website redesign + SEO + long-term digital growth.
-- Clearly imply that the current website may not fully support visibility, credibility, or lead generation.
-- Explain how redesign + SEO improvements affect real business outcomes (qualified leads, authority, growth).
+${instructions}
 - Do NOT list services or packages.
 - Tone should be calm, advisory, and founder-friendly (not salesy).
 - End with a low-friction CTA (short walkthrough, quick idea, brief chat).
 - Keep the email under 150 words.
+${hasDesigns ? `- IMPORTANT: We already created 2 custom website design previews for this client. Mention that they can review both designs, but do NOT include any URLs or links in the email body (a review button will be added separately when sending). Also briefly note that images and text in the preview are placeholder samples that will be replaced with the client's real photos, branding, and content.` : ""}
 
 Return ONLY valid JSON in this format:
 
@@ -135,32 +160,55 @@ Return ONLY valid JSON in this format:
   }
 };
 
-export const generateWhatsAppDraft = async (businessName, industry, contactName, painPoints, businessType, websiteObservations) => {
+export const generateWhatsAppDraft = async (
+  businessName,
+  industry,
+  contactName,
+  painPoints,
+  businessType,
+  websiteObservations,
+  hasDesigns = false,
+  website = null
+) => {
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+    const hasWebsite = leadHasWebsite(website);
+
+    const observationLine = hasWebsite
+      ? `- One Key Website Observation: ${
+          websiteObservations?.conversionIssues?.[0] ||
+          websiteObservations?.trustIssues?.[0] ||
+          websiteObservations?.performanceIssues?.[0] ||
+          "a small optimization opportunity"
+        }`
+      : `- Online Presence: This business does NOT have an existing website yet.`;
+
+    const instructions = hasWebsite
+      ? `- Naturally mention that you can help improve their website, SEO, and online visibility, linking this to better leads.
+      - You may reference ONE specific website observation if it helps make the message concrete.
+      - End with a soft question, such as asking if they would like a quick free review or a few redesign ideas.`
+      : `- CRITICAL: This client has NO website. Do NOT mention reviewing their website, current website, existing site, or redesigning what they already have.
+      - Frame the offer around building a professional website and online presence so customers can find and trust them.
+      - End with a soft question, such as asking if they would like to see a few website ideas for their business.`;
+
     const prompt = `
       You are a senior web design and digital growth consultant reaching out informally on WhatsApp. 
  
-      Write a short, friendly, and respectful WhatsApp message to start a conversation and introduce how you can help by redesigning their website and improving their online performance. 
+      Write a short, friendly, and respectful WhatsApp message to start a conversation and introduce how you can help them grow online. 
  
       Client Context: 
       - Business Name: ${businessName} 
       - Industry: ${industry || "their industry"} 
       - Contact Name (if available): ${contactName || "there"} 
-      - One Key Website Observation: ${
-        websiteObservations?.conversionIssues?.[0] ||
-        websiteObservations?.trustIssues?.[0] ||
-        websiteObservations?.performanceIssues?.[0] ||
-        "a small optimization opportunity"
-      } 
+      - Has Existing Website: ${hasWebsite ? "Yes" : "No"}
+      ${observationLine}
  
       Instructions: 
       - 2–3 sentences maximum. 
       - Friendly, human, and conversational. 
-      - Naturally mention that you can redesign their website and improve SEO and loading speed, linking this to better visibility and more leads. 
-      - You may briefly mention that you can also help with other related digital growth services, but keep it light. 
-      - Reference ONE specific observation or quick win if it helps make the message more concrete. 
-      - End with a soft question (easy to reply yes/no), such as asking if they would like a quick free review or a few redesign ideas. 
+      ${instructions}
+      - You may briefly mention related digital growth help, but keep it light. 
+      ${hasDesigns ? `- IMPORTANT: We created 2 website design previews for this client. Mention they can review both designs, but do NOT include any URLs (the link will be shared separately). Also note that images and content in the preview are placeholders and will be updated with their real branding and photos.` : ""}
  
       Return ONLY the raw message text. 
       Do not use markdown, bullet points, or emojis. 
@@ -175,25 +223,52 @@ export const generateWhatsAppDraft = async (businessName, industry, contactName,
   }
 };
 
-export const generateWebsiteLayout = async (businessName, industry, businessType, painPoints, aiSummary) => {
+export const generateWebsiteLayout = async (
+  businessName,
+  industry,
+  businessType,
+  painPoints,
+  aiSummary,
+  websiteObservations = null,
+  hasWebsite = true
+) => {
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
+    const auditSection = hasWebsite && websiteObservations
+      ? `Website Audit (issues found on their CURRENT site — the new design must fix these):
+- Performance Issues: ${websiteObservations.performanceIssues?.join("; ") || "None noted"}
+- Trust Issues: ${websiteObservations.trustIssues?.join("; ") || "None noted"}
+- Conversion Issues: ${websiteObservations.conversionIssues?.join("; ") || "None noted"}`
+      : hasWebsite
+      ? `Website Audit: Client has an existing website but no detailed audit yet. Write copy that improves on a typical outdated business website.`
+      : `Online Presence: Client has NO existing website. Write copy for a brand-new professional website launch.`;
+
+    const contentRules = hasWebsite && websiteObservations
+      ? `- Directly address the audit issues above in the copy (stronger CTAs if conversion issues, more trust signals if trust issues, concise sections if performance issues).
+      - Hero headline and CTAs must be clearer and more action-oriented than a typical weak business website.
+      - Include 3 testimonials that feel credible and build trust.
+      - Services section must be scannable with clear benefits.`
+      : `- Keep writing concrete and non-generic.
+      - Keep testimonials realistic, short, and trust-building.
+      - Services must match the business category.`;
+
     const prompt = `
       You are a senior conversion copywriter for local businesses.
-      Generate website CONTENT ONLY. Do not generate CSS, HTML, or layout instructions.
+      Generate website CONTENT ONLY for a REDESIGNED website. Do not generate CSS, HTML, or layout instructions.
  
       Business Name: ${businessName} 
       Industry: ${industry || "General"} 
       Business Type: ${businessType || "N/A"} 
       Pain Points: ${painPoints?.join(", ") || "N/A"} 
       Strategic Insight: ${aiSummary || "N/A"} 
+
+      ${auditSection}
  
       Rules:
-      - Keep writing concrete and non-generic.
-      - Keep testimonials realistic, short, and trust-building.
-      - Services must match the business category.
+      ${contentRules}
       - Output concise sales-ready copy.
+      - pitchMessage should mention we analyzed their situation${hasWebsite ? " and their current website" : ""} and created an improved design concept.
  
       Return ONLY valid JSON. Do not include markdown or extra text. 
  

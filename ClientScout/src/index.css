@@ -790,3 +790,85 @@ span.flatpickr-weekday,
 .simplebar-scrollbar.simplebar-visible:before {
   @apply opacity-100;
 }
+
+/* Design editor — template & theme scroll pickers */
+.design-picker-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(203 213 225) transparent;
+}
+
+.design-picker-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+
+.design-picker-scroll::-webkit-scrollbar-thumb {
+  background: rgb(203 213 225);
+  border-radius: 9999px;
+}
+
+.design-picker-item {
+  position: relative;
+  opacity: 0;
+  transform: translateY(10px) scale(0.96);
+}
+
+.design-picker-item-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.design-editor-panel-enter {
+  animation: designPanelEnter 0.38s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes designPanelEnter {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Website preview — scroll-reveal sections */
+.preview-section-animate {
+  opacity: 0;
+  transform: translateY(32px);
+  transition:
+    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.preview-section-animate.is-revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.preview-section-animate:nth-child(2) { transition-delay: 0ms; }
+.preview-section-animate:nth-child(3) { transition-delay: 60ms; }
+.preview-section-animate:nth-child(4) { transition-delay: 120ms; }
+.preview-section-animate:nth-child(5) { transition-delay: 180ms; }
+.preview-section-animate:nth-child(6) { transition-delay: 240ms; }
+.preview-section-animate:nth-child(7) { transition-delay: 300ms; }
+.preview-section-animate:nth-child(8) { transition-delay: 360ms; }
+.preview-section-animate:nth-child(9) { transition-delay: 420ms; }
+.preview-section-animate:nth-child(10) { transition-delay: 480ms; }
+.preview-section-animate:nth-child(11) { transition-delay: 540ms; }
+.preview-section-animate:nth-child(12) { transition-delay: 600ms; }
+
+.preview-fade-switch {
+  animation: previewFadeIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes previewFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

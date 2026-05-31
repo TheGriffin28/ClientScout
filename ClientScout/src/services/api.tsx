@@ -24,13 +24,14 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Don't redirect if we're already on auth pages or if it's an auth endpoint
+      // Don't redirect if we're already on auth pages or if it's an auth/public endpoint
       const url = error.config?.url || "";
       const isAuthEndpoint = url.includes("/auth/login") || url.includes("/auth/register");
+      const isPublicEndpoint = url.includes("/leads/public/");
       const isAuthPage = window.location.pathname === "/signin" || window.location.pathname === "/signup";
       
-      // Only redirect if it's not an auth endpoint and not already on auth page
-      if (!isAuthEndpoint && !isAuthPage) {
+      // Only redirect if it's not an auth endpoint, not a public endpoint, and not already on auth page
+      if (!isAuthEndpoint && !isPublicEndpoint && !isAuthPage) {
         // Clear token and redirect to login
         localStorage.removeItem("token");
         sessionStorage.removeItem("token");

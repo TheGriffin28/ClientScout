@@ -3,29 +3,156 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { getLeadById, updateLead, Lead, LayoutVersion } from "../services/leadService";
-import { suggestLayoutFor, suggestAlternativeLayoutFor, LEGACY_TEMPLATE_MAP, LegacyTemplateKey, ThemeKey, THEMES, TEMPLATES } from "../services/templateEngine";
 import WebsitePreview from "../components/leads/WebsitePreview";
-import { FaCheckCircle, FaStar, FaEdit, FaShareAlt, FaArrowLeft } from "react-icons/fa";
+import DesignPreviewFrame from "../components/leads/DesignPreviewFrame";
+import { getPreviewUrl, templateNames, themeNames, isVersionClientApproved, ensureLayoutContent, EDITOR_DATA_KEY, EDITOR_RESULT_KEY, DesignEditorResult, enrichLeadWithDesigns, hasPreparedDesigns, buildLeadDesignShareUrl } from "../components/leads/designPreviewUtils";
+import AnalysisDesignFixes from "../components/leads/AnalysisDesignFixes";
+import {
+  FaCheckCircle,
+  FaStar,
+  FaEdit,
+  FaShareAlt,
+  FaArrowLeft,
+  FaExternalLinkAlt,
+  FaPalette,
+  FaLayerGroup,
+} from "react-icons/fa";
 import { Modal } from "../components/ui/modal";
 
-const templateNames: Record<LegacyTemplateKey, string> = {
-  "modern-business": "Corporate / Professional",
-  "premium-dark": "Creative / Modern",
-  "local-bright": "Minimal / Local Business",
-  "minimal-fast": "Minimal / Local Business",
-  "ecommerce-store": "E-commerce / Store",
-};
+function DesignCard({
+  version,
+  lead,
+  isSelected,
+  isApproved,
+  onSelect,
+  onEdit,
+  onPreviewLive,
+  onCopyLink,
+  onExpand,
+}: {
+  version: LayoutVersion;
+  lead: Lead;
+  isSelected: boolean;
+  isApproved: boolean;
+  onSelect: () => void;
+  onEdit: () => void;
+  onPreviewLive: () => void;
+  onCopyLink: () => void;
+  onExpand: () => void;
+}) {
+  const previewUrl = getPreviewUrl(lead.businessName);
 
-const themeNames: Record<ThemeKey, string> = {
-  light: "Light",
-  dark: "Dark",
-  luxury: "Luxury",
-  startup: "Startup",
-  warm: "Warm",
-};
+  return (
+    <article
+      className={`group flex flex-col overflow-hidden rounded-2xl border bg-white transition-all duration-300 dark:bg-gray-900 ${
+        isApproved
+          ? "border-emerald-500 shadow-lg shadow-emerald-500/10 ring-1 ring-emerald-500"
+          : isSelected
+          ? "border-blue-500 shadow-lg shadow-blue-500/10 ring-1 ring-blue-500"
+          : "border-gray-200 shadow-sm hover:border-gray-300 hover:shadow-md dark:border-gray-700"
+      }`}
+    >
+      {/* Card header */}
+      <div className="border-b border-gray-100 px-5 py-4 dark:border-gray-800">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="mb-1 flex flex-wrap items-center gap-2">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                {version.name}
+              </h3>
+              {version.isRecommended && !isApproved && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-violet-600 to-indigo-600 px-2.5 py-0.5 text-xs font-semibold text-white">
+                  <FaStar className="h-2.5 w-2.5 text-amber-300" />
+                  Recommended
+                </span>
+              )}
+              {isApproved && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2.5 py-0.5 text-xs font-semibold text-white">
+                  <FaCheckCircle className="h-3 w-3" />
+                  Approved
+                </span>
+              )}
+              {isSelected && !isApproved && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">
+                  <FaCheckCircle className="h-3 w-3" />
+                  Selected
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{version.description}</p>
+            <div className="mt-2.5 flex flex-wrap gap-2">
+              <span className="inline-flex items-center gap-1 rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                <FaLayerGroup className="h-3 w-3 text-gray-400" />
+                {templateNames[version.templateKey] || version.templateKey}
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                <FaPalette className="h-3 w-3 text-gray-400" />
+                {themeNames[version.themeKey || "light"]} theme
+              </span>
+            </div>
+          </div>
+          <button
+            onClick={onEdit}
+            className="shrink-0 rounded-lg border border-gray-200 p-2 text-gray-400 transition-colors hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700 dark:border-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+            title="Edit design in new window"
+          >
+            <FaEdit className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
 
-const availableTemplates: LegacyTemplateKey[] = ["modern-business", "premium-dark", "local-bright", "minimal-fast"];
-const availableThemes: ThemeKey[] = ["light", "dark", "luxury", "startup", "warm"];
+      {/* Browser preview */}
+      <div className="flex-1 bg-gray-50 p-4 dark:bg-gray-950">
+        <DesignPreviewFrame url={previewUrl} onExpand={onExpand}>
+          <WebsitePreview
+            layout={version}
+            businessName={lead.businessName}
+            industry={lead.industry}
+            businessType={lead.businessType}
+          />
+        </DesignPreviewFrame>
+      </div>
+
+      {/* Actions */}
+      <div className="border-t border-gray-100 p-4 dark:border-gray-800">
+        {isApproved ? (
+          <div className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 py-2.5 text-sm font-semibold text-white">
+            <FaCheckCircle />
+            Approved by client
+          </div>
+        ) : isSelected ? (
+          <div className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 py-2.5 text-sm font-semibold text-white">
+            <FaCheckCircle />
+            This design is selected
+          </div>
+        ) : (
+          <button
+            onClick={onSelect}
+            className="mb-3 w-full rounded-xl bg-blue-600 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
+          >
+            Choose This Design
+          </button>
+        )}
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={onPreviewLive}
+            className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-gray-200 py-2 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+          >
+            <FaExternalLinkAlt className="h-3 w-3" />
+            Preview Live
+          </button>
+          <button
+            onClick={onCopyLink}
+            className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-gray-200 py-2 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+          >
+            <FaShareAlt className="h-3 w-3" />
+            Copy Link
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+}
 
 export default function LayoutPresentationPage() {
   const { id } = useParams<{ id: string }>();
@@ -34,13 +161,52 @@ export default function LayoutPresentationPage() {
   const [loading, setLoading] = useState(true);
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
   const [isRequestChangesModalOpen, setIsRequestChangesModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [editingVersion, setEditingVersion] = useState<LayoutVersion | null>(null);
-  const [editTemplate, setEditTemplate] = useState<LegacyTemplateKey>("modern-business");
-  const [editTheme, setEditTheme] = useState<ThemeKey>("light");
   const [changeRequest, setChangeRequest] = useState("");
-  const [sharingVersion, setSharingVersion] = useState<LayoutVersion | null>(null);
+  const [expandedVersion, setExpandedVersion] = useState<LayoutVersion | null>(null);
+
+  useEffect(() => {
+    const applyEditorResult = (result: DesignEditorResult) => {
+      if (!id || result.leadId !== id) return;
+
+      setLead((prev) => {
+        if (!prev) return prev;
+        const updatedVersions =
+          prev.layoutVersions?.map((v) =>
+            v.id === result.versionId ? result.version : v
+          ) || [result.version];
+        return {
+          ...prev,
+          layoutVersions: updatedVersions,
+          selectedLayoutId: result.versionId,
+        };
+      });
+      setSelectedVersionId(result.versionId);
+      toast.success("Design updated and selected!");
+    };
+
+    const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type === "DESIGN_EDITOR_CONFIRMED") {
+        applyEditorResult(event.data.payload as DesignEditorResult);
+      }
+    };
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key !== EDITOR_RESULT_KEY || !event.newValue) return;
+      try {
+        applyEditorResult(JSON.parse(event.newValue) as DesignEditorResult);
+      } catch {
+        /* ignore */
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+    window.addEventListener("storage", handleStorage);
+    return () => {
+      window.removeEventListener("message", handleMessage);
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, [id]);
 
   useEffect(() => {
     if (id) {
@@ -53,86 +219,13 @@ export default function LayoutPresentationPage() {
     try {
       setLoading(true);
       const data = await getLeadById(id);
-      
-      console.log("Fetched lead data:", data);
-      
-      // Generate both versions locally since backend doesn't store layoutVersions
-      let leadToUse = data;
-      
-      if (data.generatedLayout) {
-        // Get recommendations
-        const recommendedSuggestion = suggestLayoutFor(data.industry, data.businessType);
-        const alternativeSuggestion = suggestAlternativeLayoutFor(data.industry, data.businessType);
-        
-        // Ensure content has all required sections with defaults
-        const ensureContent = (content: any) => ({
-          hero: content.hero || {
-            headline: `${data.businessName} — We Help You Grow`,
-            tagline: "AI-generated website concept",
-            primaryCta: "Get Started",
-            secondaryCta: "Learn More",
-          },
-          about: content.about || {
-            title: `About ${data.businessName}`,
-            description: "We provide exceptional services to help your business succeed.",
-          },
-          services: content.services && content.services.length ? content.services : [
-            { name: "Service One", description: "Description of service one." },
-            { name: "Service Two", description: "Description of service two." },
-            { name: "Service Three", description: "Description of service three." },
-          ],
-          testimonials: content.testimonials && content.testimonials.length ? content.testimonials : [
-            { name: "A Happy Customer", quote: "They helped our business grow tremendously." },
-          ],
-          contact: content.contact || {
-            phone: "",
-            address: "",
-            ctaText: "Contact Us",
-          },
-          gallery: content.gallery || [],
-        });
-        
-        const safeContent = ensureContent(data.generatedLayout.content);
-        
-        // Create recommended version
-        const recommendedVersion: LayoutVersion = {
-          id: `recommended-${Date.now()}`,
-          name: "Recommended Design",
-          description: "Professional, trust-building design perfect for conversions",
-          templateKey: recommendedSuggestion.templateKey,
-          themeKey: recommendedSuggestion.themeKey,
-          content: safeContent,
-          pitchMessage: data.generatedLayout.pitchMessage,
-          previewUrl: data.generatedLayout.previewUrl,
-          generatedAt: new Date().toISOString(),
-          isRecommended: true,
-        };
 
-        // Create alternative version
-        const alternativeVersion: LayoutVersion = {
-          id: `alternative-${Date.now()}`,
-          name: "Alternative Style",
-          description: "Modern, bold design with a more creative feel",
-          templateKey: alternativeSuggestion.templateKey,
-          themeKey: alternativeSuggestion.themeKey,
-          content: safeContent,
-          pitchMessage: data.generatedLayout.pitchMessage,
-          previewUrl: data.generatedLayout.previewUrl,
-          generatedAt: new Date().toISOString(),
-          isRecommended: false,
-        };
+      let leadToUse = enrichLeadWithDesigns(data);
 
-        leadToUse = {
-          ...data,
-          layoutVersions: [recommendedVersion, alternativeVersion],
-        };
-      }
-      
       setLead(leadToUse);
-      
-      // Auto-select recommended version or first one
+
       if (leadToUse.layoutVersions && leadToUse.layoutVersions.length > 0) {
-        const recommended = leadToUse.layoutVersions.find(v => v.isRecommended);
+        const recommended = leadToUse.layoutVersions.find((v) => v.isRecommended);
         setSelectedVersionId(recommended?.id || leadToUse.layoutVersions[0].id);
       } else if (leadToUse.selectedLayoutId) {
         setSelectedVersionId(leadToUse.selectedLayoutId);
@@ -149,50 +242,20 @@ export default function LayoutPresentationPage() {
     if (!id || !lead) return;
     try {
       setSelectedVersionId(version.id);
-      
-      // Ensure content has all required sections with defaults
-      const ensureContent = (content: any) => ({
-        hero: content.hero || {
-          headline: `${lead.businessName} — We Help You Grow`,
-          tagline: "AI-generated website concept",
-          primaryCta: "Get Started",
-          secondaryCta: "Learn More",
-        },
-        about: content.about || {
-          title: `About ${lead.businessName}`,
-          description: "We provide exceptional services to help your business succeed.",
-        },
-        services: content.services && content.services.length ? content.services : [
-          { name: "Service One", description: "Description of service one." },
-          { name: "Service Two", description: "Description of service two." },
-          { name: "Service Three", description: "Description of service three." },
-        ],
-        testimonials: content.testimonials && content.testimonials.length ? content.testimonials : [
-          { name: "A Happy Customer", quote: "They helped our business grow tremendously." },
-        ],
-        contact: content.contact || {
-          phone: "",
-          address: "",
-          ctaText: "Contact Us",
-        },
-        gallery: content.gallery || [],
-      });
-      
-      // Save the selected layout
+
       const updatedLead = await updateLead(id, {
         generatedLayout: {
           templateKey: version.templateKey,
           themeKey: version.themeKey,
-          content: ensureContent(version.content),
+          content: ensureLayoutContent(version.content, lead.businessName),
           pitchMessage: version.pitchMessage,
           previewUrl: version.previewUrl,
           generatedAt: version.generatedAt,
         } as any,
       });
-      
-      // Store selectedLayoutId in localStorage since backend doesn't support it yet
+
       localStorage.setItem(`lead_${id}_selectedLayout`, version.id);
-      
+
       setLead({
         ...updatedLead,
         layoutVersions: lead.layoutVersions,
@@ -218,53 +281,24 @@ export default function LayoutPresentationPage() {
   };
 
   const handleOpenEditModal = (version: LayoutVersion) => {
-    setEditingVersion(version);
-    setEditTemplate(version.templateKey);
-    setEditTheme(version.themeKey || "light");
-    setIsEditModalOpen(true);
-  };
-
-  const handleSaveEdit = () => {
-    if (!editingVersion || !lead) return;
-    
-    const updatedVersion: LayoutVersion = {
-      ...editingVersion,
-      templateKey: editTemplate,
-      themeKey: editTheme,
-    };
-    
-    const updatedVersions = lead.layoutVersions?.map(v => 
-      v.id === editingVersion.id ? updatedVersion : v
-    ) || [updatedVersion];
-    
-    setLead({
-      ...lead,
-      layoutVersions: updatedVersions,
-    });
-    
-    toast.success("Design updated!");
-    setIsEditModalOpen(false);
-    setEditingVersion(null);
-  };
-
-  const handleOpenShareModal = (version?: LayoutVersion) => {
-    setSharingVersion(version || null);
-    setIsShareModalOpen(true);
-  };
-
-  const handleCopyShareLink = async (version: LayoutVersion) => {
     if (!id || !lead) return;
-    
-    const shareData = {
+
+    const editorData = {
       leadId: id,
+      version,
       businessName: lead.businessName,
-      versionId: version.id,
-      version: version,
+      industry: lead.industry,
+      businessType: lead.businessType,
     };
-    
-    const encoded = btoa(encodeURIComponent(JSON.stringify(shareData)));
-    const shareUrl = `${window.location.origin}/preview?data=${encoded}`;
-    
+    localStorage.setItem(EDITOR_DATA_KEY, JSON.stringify(editorData));
+    window.open("/design-editor", "_blank", "noopener,noreferrer");
+  };
+
+  const handleCopyShareLink = async (_version: LayoutVersion) => {
+    if (!id) return;
+
+    const shareUrl = buildLeadDesignShareUrl(id);
+
     try {
       await navigator.clipboard.writeText(shareUrl);
       toast.success("Share link copied to clipboard!");
@@ -276,16 +310,9 @@ export default function LayoutPresentationPage() {
 
   const handleShareBoth = async () => {
     if (!id || !lead || !versions.length) return;
-    
-    const shareData = {
-      leadId: id,
-      businessName: lead.businessName,
-      versions: versions,
-    };
-    
-    const encoded = btoa(encodeURIComponent(JSON.stringify(shareData)));
-    const shareUrl = `${window.location.origin}/preview?data=${encoded}`;
-    
+
+    const shareUrl = buildLeadDesignShareUrl(id);
+
     try {
       await navigator.clipboard.writeText(shareUrl);
       toast.success("Share link for both designs copied!");
@@ -298,10 +325,10 @@ export default function LayoutPresentationPage() {
   const handleRequestChanges = async () => {
     if (!id || !changeRequest.trim()) return;
     try {
-      const updatedNotes = lead?.notes 
+      const updatedNotes = lead?.notes
         ? `${lead.notes}\n\n--- Change Request ---\n${changeRequest}`
         : `--- Change Request ---\n${changeRequest}`;
-      
+
       await updateLead(id, { notes: updatedNotes });
       toast.success("Change request submitted!");
       setIsRequestChangesModalOpen(false);
@@ -314,19 +341,32 @@ export default function LayoutPresentationPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-600">Loading designs...</p>
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+        <div className="mb-8 animate-pulse space-y-3">
+          <div className="h-8 w-64 rounded-lg bg-gray-200 dark:bg-gray-700" />
+          <div className="h-4 w-96 rounded bg-gray-100 dark:bg-gray-800" />
+        </div>
+        <div className="grid gap-6 md:grid-cols-2">
+          {[0, 1].map((i) => (
+            <div key={i} className="animate-pulse overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-700">
+              <div className="h-24 bg-gray-100 dark:bg-gray-800" />
+              <div className="h-[420px] bg-gray-50 dark:bg-gray-900" />
+              <div className="h-28 bg-gray-100 dark:bg-gray-800" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
 
   if (!lead) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">Lead Not Found</h1>
+      <div className="flex min-h-[60vh] flex-col items-center justify-center px-4">
+        <h1 className="mb-2 text-2xl font-bold text-gray-900 dark:text-white">Lead Not Found</h1>
+        <p className="mb-6 text-gray-500">The lead you're looking for doesn't exist.</p>
         <button
           onClick={() => navigate("/leads")}
-          className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700"
+          className="rounded-lg bg-blue-600 px-6 py-2.5 font-semibold text-white hover:bg-blue-700"
         >
           Back to Leads
         </button>
@@ -336,263 +376,197 @@ export default function LayoutPresentationPage() {
 
   const versions = lead.layoutVersions || [];
   const hasVersions = versions.length > 0;
-
-  console.log("Rendering LayoutPresentationPage with:", {
-    lead,
-    versions,
-    hasVersions,
-    selectedVersionId
-  });
+  const selectedVersion = versions.find((v) => v.id === selectedVersionId);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-8 py-6">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => navigate(-1)}
-                className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50"
-              >
-                <FaArrowLeft />
-              </button>
+    <div className="pb-12">
+      {/* Page header */}
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-start gap-3">
+          <button
+            onClick={() => navigate(-1)}
+            className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 text-gray-600 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
+          >
+            <FaArrowLeft className="h-3.5 w-3.5" />
+          </button>
+          <div>
+            <p className="mb-0.5 text-xs font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400">
+              Design Presentation
+            </p>
+            <h1 className="text-xl font-bold text-gray-900 dark:text-white sm:text-2xl">
+              {lead.businessName}
+            </h1>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              {hasVersions
+                ? `${versions.length} website concepts ready to share with your client`
+                : "Generating design concepts..."}
+            </p>
+          </div>
+        </div>
+
+        {hasVersions && (
+          <div className="flex shrink-0 flex-wrap gap-2">
+            <button
+              onClick={handleShareBoth}
+              className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
+            >
+              <FaShareAlt className="h-3.5 w-3.5" />
+              Share Both Designs
+            </button>
+            <button
+              onClick={() => setIsRequestChangesModalOpen(true)}
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+            >
+              <FaEdit className="h-3.5 w-3.5" />
+              Request Changes
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Pitch banner */}
+      {hasVersions && (
+        <div className="mb-6 space-y-4">
+          <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-900 px-6 py-5 text-white">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">
-                  {lead.businessName} - Website Designs
-                </h1>
-                <p className="text-gray-500">
-                  {hasVersions 
-                    ? "We prepared 2 versions for your business"
-                    : "Preparing designs..."}
+                <h2 className="text-base font-semibold sm:text-lg">
+                  {lead.websiteObservations && lead.aiGeneratedAt
+                    ? "Redesigns based on your website audit"
+                    : "Two tailored designs, one clear recommendation"}
+                </h2>
+                <p className="mt-1 max-w-xl text-sm text-blue-100/80">
+                  {lead.websiteObservations && lead.aiGeneratedAt
+                    ? `These concepts address issues found on ${lead.businessName}'s current site. Compare both, select a favorite, then share with your client.`
+                    : `Compare both concepts side-by-side, select your preferred design, then share a link directly with ${lead.businessName}.`}
                 </p>
               </div>
-            </div>
-            <div className="flex gap-3">
-              {hasVersions && (
-                <>
-                  <button
-                    onClick={handleShareBoth}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors"
-                  >
-                    <FaShareAlt />
-                    Share Both Designs
-                  </button>
-                  <button
-                    onClick={() => setIsRequestChangesModalOpen(true)}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50"
-                  >
-                    <FaEdit />
-                    Request Changes
-                  </button>
-                </>
+              {selectedVersion && (
+                <div className="shrink-0 rounded-xl bg-white/10 px-4 py-3 backdrop-blur-sm">
+                  <p className="text-xs font-medium uppercase tracking-wider text-blue-200">
+                    Current selection
+                  </p>
+                  <p className="mt-0.5 text-sm font-semibold">{selectedVersion.name}</p>
+                </div>
               )}
             </div>
           </div>
+          {lead.websiteObservations && lead.aiGeneratedAt && (
+            <AnalysisDesignFixes observations={lead.websiteObservations} />
+          )}
         </div>
-      </header>
+      )}
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-8 py-8">
-        {!hasVersions ? (
-          <div className="text-center py-20">
-            <p className="text-gray-600 mb-6">
-              {lead.generatedLayout 
-                ? "Preparing design presentation..."
-                : "No design versions available yet."}
-            </p>
-            <div className="flex flex-wrap gap-3 justify-center">
-              <button
-                onClick={() => navigate(`/leads/${id}`)}
-                className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700"
-              >
-                Go Back to Lead
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="grid md:grid-cols-2 gap-8">
-            {versions.map((version) => (
-              <div
-                key={version.id}
-                className={`relative rounded-2xl overflow-hidden transition-all duration-300 ${
-                  selectedVersionId === version.id
-                    ? "ring-4 ring-blue-500 shadow-2xl"
-                    : "shadow-lg hover:shadow-xl"
-                }`}
-              >
-                {/* Recommended Badge */}
-                {version.isRecommended && (
-                  <div className="absolute top-4 right-4 z-10">
-                    <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg flex items-center gap-2">
-                      <FaStar className="text-yellow-300" />
-                      Recommended
-                    </div>
-                  </div>
-                )}
+      {/* Design grid */}
+      {!hasVersions ? (
+        <div className="flex flex-col items-center rounded-2xl border border-dashed border-gray-300 py-16 text-center dark:border-gray-700">
+          <FaLayerGroup className="mb-4 h-10 w-10 text-gray-300 dark:text-gray-600" />
+          <p className="mb-1 font-medium text-gray-700 dark:text-gray-300">
+            {hasPreparedDesigns(lead) ? "Preparing design presentation..." : "No design versions available yet"}
+          </p>
+          <p className="mb-6 text-sm text-gray-500">
+            Generate designs from the lead detail page first.
+          </p>
+          <button
+            onClick={() => navigate(`/leads/${id}`)}
+            className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
+          >
+            Go Back to Lead
+          </button>
+        </div>
+      ) : (
+        <div className="grid gap-6 lg:grid-cols-2">
+          {versions.map((version) => (
+            <DesignCard
+              key={version.id}
+              version={version}
+              lead={lead}
+              isSelected={selectedVersionId === version.id}
+              isApproved={isVersionClientApproved(version, lead)}
+              onSelect={() => handleSelectLayout(version)}
+              onEdit={() => handleOpenEditModal(version)}
+              onPreviewLive={() => handlePreviewLive(version)}
+              onCopyLink={() => handleCopyShareLink(version)}
+              onExpand={() => setExpandedVersion(version)}
+            />
+          ))}
+        </div>
+      )}
 
-                {/* Version Header */}
-                <div className="bg-white border-b border-gray-100 p-6">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <h3 className="text-xl font-bold text-gray-900 mb-2">
-                        {version.name}
-                      </h3>
-                      <p className="text-gray-600 text-sm">{version.description}</p>
-                    </div>
-                    <button
-                      onClick={() => handleOpenEditModal(version)}
-                      className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-600 hover:text-gray-800 transition-colors"
-                      title="Edit design"
-                    >
-                      <FaEdit />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Preview */}
-                <div className="bg-gray-100 aspect-[4/3] overflow-hidden">
-                  <div className="h-full overflow-y-auto">
-                    <WebsitePreview
-                      layout={version}
-                      businessName={lead.businessName}
-                      industry={lead.industry}
-                      businessType={lead.businessType}
-                    />
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="bg-white p-6 flex flex-col gap-3">
-                  {selectedVersionId === version.id ? (
-                    <button
-                      className="w-full bg-green-600 text-white font-semibold py-3 rounded-xl hover:bg-green-700 flex items-center justify-center gap-2"
-                    >
-                      <FaCheckCircle />
-                      Selected
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => handleSelectLayout(version)}
-                      className="w-full bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 transition-colors"
-                    >
-                      Choose This Design
-                    </button>
-                  )}
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handlePreviewLive(version)}
-                      className="flex-1 border border-gray-200 text-gray-700 font-medium py-3 rounded-xl hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
-                    >
-                      <FaShareAlt />
-                      Preview Live
-                    </button>
-                    <button
-                      onClick={() => handleCopyShareLink(version)}
-                      className="border border-gray-200 text-gray-700 font-medium py-3 px-4 rounded-xl hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
-                      title="Copy share link"
-                    >
-                      <FaShareAlt />
-                      Copy Link
-                    </button>
-                  </div>
-                </div>
+      {/* Expand preview modal */}
+      <Modal
+        isOpen={!!expandedVersion}
+        onClose={() => setExpandedVersion(null)}
+        isFullscreen
+        className="!rounded-none !p-0 !shadow-none !max-w-none !mx-0 !my-0 flex flex-col bg-gray-100 dark:bg-gray-950"
+      >
+        {expandedVersion && lead && (
+          <>
+            <div className="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3 dark:border-gray-800 dark:bg-gray-900">
+              <div>
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                  {expandedVersion.name}
+                </p>
+                <p className="text-xs text-gray-500">{lead.businessName}</p>
               </div>
-            ))}
-          </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handlePreviewLive(expandedVersion)}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+                >
+                  <FaExternalLinkAlt className="h-3 w-3" />
+                  Open Full Preview
+                </button>
+                <button
+                  onClick={() => setExpandedVersion(null)}
+                  className="rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <WebsitePreview
+                layout={expandedVersion}
+                businessName={lead.businessName}
+                industry={lead.industry}
+                businessType={lead.businessType}
+              />
+            </div>
+          </>
         )}
-      </main>
+      </Modal>
 
       {/* Request Changes Modal */}
       <Modal
         isOpen={isRequestChangesModalOpen}
         onClose={() => setIsRequestChangesModalOpen(false)}
         className="max-w-xl"
+        title="Request Changes"
       >
-        <div className="p-6">
-          <h3 className="text-xl font-bold text-gray-900 mb-4">Request Changes</h3>
-          <textarea
-            value={changeRequest}
-            onChange={(e) => setChangeRequest(e.target.value)}
-            placeholder="Tell us what changes you'd like to see..."
-            rows={6}
-            className="w-full border border-gray-300 rounded-xl p-4 text-gray-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none"
-          />
-          <div className="flex gap-3 mt-6 justify-end">
-            <button
-              onClick={() => setIsRequestChangesModalOpen(false)}
-              className="px-5 py-2.5 text-gray-600 hover:text-gray-800"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleRequestChanges}
-              disabled={!changeRequest.trim()}
-              className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-            >
-              Submit
-            </button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Edit Design Modal */}
-      <Modal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        className="max-w-xl"
-      >
-        <div className="p-6">
-          <h3 className="text-xl font-bold text-gray-900 mb-6">Edit {editingVersion?.name}</h3>
-          
-          <div className="space-y-6">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Template</label>
-              <select
-                value={editTemplate}
-                onChange={(e) => setEditTemplate(e.target.value as LegacyTemplateKey)}
-                className="w-full border border-gray-300 rounded-xl p-4 text-gray-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none"
-              >
-                {availableTemplates.map((template) => (
-                  <option key={template} value={template}>
-                    {templateNames[template]}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Theme</label>
-              <select
-                value={editTheme}
-                onChange={(e) => setEditTheme(e.target.value as ThemeKey)}
-                className="w-full border border-gray-300 rounded-xl p-4 text-gray-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none"
-              >
-                {availableThemes.map((theme) => (
-                  <option key={theme} value={theme}>
-                    {themeNames[theme]}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="flex gap-3 mt-8 justify-end">
-            <button
-              onClick={() => setIsEditModalOpen(false)}
-              className="px-5 py-2.5 text-gray-600 hover:text-gray-800"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSaveEdit}
-              className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              Save Changes
-            </button>
-          </div>
+        <textarea
+          value={changeRequest}
+          onChange={(e) => setChangeRequest(e.target.value)}
+          placeholder="Tell us what changes you'd like to see..."
+          rows={6}
+          className="w-full rounded-xl border border-gray-300 p-4 text-gray-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+        />
+        <div className="mt-6 flex justify-end gap-3">
+          <button
+            onClick={() => setIsRequestChangesModalOpen(false)}
+            className="px-5 py-2.5 text-gray-600 hover:text-gray-800 dark:text-gray-400"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleRequestChanges}
+            disabled={!changeRequest.trim()}
+            className="rounded-lg bg-blue-600 px-5 py-2.5 text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            Submit
+          </button>
         </div>
       </Modal>
     </div>
   );
 }
-
