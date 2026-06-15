@@ -1,6 +1,7 @@
 import {
   LegacyTemplateKey,
   ThemeKey,
+  HeroVariant,
   suggestLayoutFor,
   suggestAlternativeLayoutFor,
   suggestLayoutFromAnalysis,
@@ -12,6 +13,11 @@ export const AVAILABLE_TEMPLATES: LegacyTemplateKey[] = [
   "modern-business",
   "premium-dark",
   "local-bright",
+  "bold-edge",
+  "elegant-classic",
+  "playful-fun",
+  "technical-pro",
+  "nature-green",
 ];
 
 export const AVAILABLE_THEMES: ThemeKey[] = ["light", "dark", "luxury", "startup", "warm"];
@@ -22,6 +28,11 @@ export const templateNames: Record<LegacyTemplateKey, string> = {
   "local-bright": "Local / Bright",
   "minimal-fast": "Clean / Minimal",
   "ecommerce-store": "E-commerce / Store",
+  "bold-edge": "Bold / Edgy",
+  "elegant-classic": "Elegant / Classic",
+  "playful-fun": "Playful / Fun",
+  "technical-pro": "Technical / Professional",
+  "nature-green": "Nature / Green",
 };
 
 export const themeNames: Record<ThemeKey, string> = {
@@ -149,6 +160,8 @@ export function buildLayoutVersionsFromLead(lead: Lead): LayoutVersion[] {
   const safeContent = ensureLayoutContent(lead.generatedLayout.content, lead.businessName);
   const storedTemplate = lead.generatedLayout.templateKey as LegacyTemplateKey;
   const storedTheme = (lead.generatedLayout as { themeKey?: ThemeKey }).themeKey;
+  const storedHeroVariant = (lead.generatedLayout as { heroVariant?: HeroVariant }).heroVariant;
+  const storedDesign = (lead.generatedLayout as { design?: any }).design;
 
   return [
     {
@@ -159,6 +172,8 @@ export function buildLayoutVersionsFromLead(lead: Lead): LayoutVersion[] {
         "Professional, trust-building design perfect for conversions",
       templateKey: storedTemplate || recommendedSuggestion.templateKey,
       themeKey: storedTheme || recommendedSuggestion.themeKey,
+      heroVariant: storedHeroVariant || recommendedSuggestion.heroVariant,
+      design: storedDesign, // Pass AI-generated design recipe
       content: safeContent,
       pitchMessage: lead.generatedLayout.pitchMessage,
       previewUrl: lead.generatedLayout.previewUrl,
@@ -171,6 +186,7 @@ export function buildLayoutVersionsFromLead(lead: Lead): LayoutVersion[] {
       description: alternativeSuggestion.rationale || "Modern, bold design with a more creative feel",
       templateKey: alternativeSuggestion.templateKey,
       themeKey: alternativeSuggestion.themeKey,
+      heroVariant: alternativeSuggestion.heroVariant,
       content: safeContent,
       pitchMessage: lead.generatedLayout.pitchMessage,
       previewUrl: lead.generatedLayout.previewUrl,

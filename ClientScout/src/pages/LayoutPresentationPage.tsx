@@ -247,6 +247,8 @@ export default function LayoutPresentationPage() {
         generatedLayout: {
           templateKey: version.templateKey,
           themeKey: version.themeKey,
+          heroVariant: version.heroVariant,
+          design: undefined, // Clear AI design when selecting a layout
           content: ensureLayoutContent(version.content, lead.businessName),
           pitchMessage: version.pitchMessage,
           previewUrl: version.previewUrl,

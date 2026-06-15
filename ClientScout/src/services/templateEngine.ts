@@ -1,8 +1,12 @@
 // Template + Theme model definitions for ClientScout
 // Lightweight starter for Template Layer and Theme Layer
 
-export type TemplateKey = "corporate" | "creative" | "minimal" | "ecommerce";
-export type LegacyTemplateKey = "modern-business" | "premium-dark" | "local-bright" | "minimal-fast" | "ecommerce-store";
+function getRandomItem<T>(array: T[]): T {
+  return array[Math.floor(Math.random() * array.length)];
+}
+
+export type TemplateKey = "corporate" | "creative" | "minimal" | "ecommerce" | "bold" | "elegant" | "playful" | "technical" | "nature";
+export type LegacyTemplateKey = "modern-business" | "premium-dark" | "local-bright" | "minimal-fast" | "ecommerce-store" | "bold-edge" | "elegant-classic" | "playful-fun" | "technical-pro" | "nature-green";
 
 export type HeroVariant = "left-image" | "large-visual" | "centered";
 
@@ -43,6 +47,11 @@ export const LEGACY_TEMPLATE_MAP: Record<TemplateKey, LegacyTemplateKey> = {
   creative: "premium-dark",
   minimal: "local-bright",
   ecommerce: "ecommerce-store",
+  bold: "bold-edge",
+  elegant: "elegant-classic",
+  playful: "playful-fun",
+  technical: "technical-pro",
+  nature: "nature-green",
 };
 
 export const TEMPLATES: Record<TemplateKey, TemplateStructure> = {
@@ -68,7 +77,7 @@ export const TEMPLATES: Record<TemplateKey, TemplateStructure> = {
     key: "minimal",
     name: "Minimal / Local Business",
     description: "Centered hero, features, services, about, testimonials, CTA, contact",
-    heroVariant: ["centered"],
+    heroVariant: ["centered", "left-image"],
     sectionsOrder: ["hero", "features", "services", "about", "testimonials", "cta", "contact", "footer"],
     cardStyle: "list",
     spacing: "dense",
@@ -82,43 +91,88 @@ export const TEMPLATES: Record<TemplateKey, TemplateStructure> = {
     cardStyle: "grid",
     spacing: "spacious",
   },
+  bold: {
+    key: "bold",
+    name: "Bold / Edgy",
+    description: "Large visual hero, quote, services, stats, CTA, about, testimonials, contact",
+    heroVariant: ["large-visual", "left-image"],
+    sectionsOrder: ["hero", "quote", "services", "stats", "cta", "about", "testimonials", "contact", "footer"],
+    cardStyle: "overlap",
+    spacing: "spacious",
+  },
+  elegant: {
+    key: "elegant",
+    name: "Elegant / Classic",
+    description: "Centered hero, about, services, testimonials, gallery, CTA, contact",
+    heroVariant: ["centered", "left-image"],
+    sectionsOrder: ["hero", "about", "services", "testimonials", "gallery", "cta", "contact", "footer"],
+    cardStyle: "grid",
+    spacing: "regular",
+  },
+  playful: {
+    key: "playful",
+    name: "Playful / Fun",
+    description: "Large visual hero, features, services, testimonials, gallery, quote, CTA, contact",
+    heroVariant: ["large-visual", "centered"],
+    sectionsOrder: ["hero", "features", "services", "testimonials", "gallery", "quote", "cta", "contact", "footer"],
+    cardStyle: "overlap",
+    spacing: "spacious",
+  },
+  technical: {
+    key: "technical",
+    name: "Technical / Professional",
+    description: "Left-image hero, stats, features, services, about, testimonials, CTA, contact",
+    heroVariant: ["left-image", "centered"],
+    sectionsOrder: ["hero", "stats", "features", "services", "about", "testimonials", "cta", "contact", "footer"],
+    cardStyle: "list",
+    spacing: "dense",
+  },
+  nature: {
+    key: "nature",
+    name: "Nature / Green",
+    description: "Large visual hero, features, about, services, testimonials, gallery, CTA, contact",
+    heroVariant: ["large-visual", "left-image"],
+    sectionsOrder: ["hero", "features", "about", "services", "testimonials", "gallery", "cta", "contact", "footer"],
+    cardStyle: "grid",
+    spacing: "regular",
+  },
 };
 
 export const THEMES: Record<ThemeKey, ThemeTokens> = {
   light: {
     key: "light",
     displayName: "Light",
-    colors: { primary: "#0f172a", accent: "#fb923c", background: "#ffffff", surface: "#f8fafc", text: "#0f172a" },
+    colors: { primary: "#1e293b", accent: "#2563eb", background: "#f8fafc", surface: "#ffffff", text: "#1e293b" },
     fonts: { heading: "Inter, system-ui, sans-serif", body: "Inter, system-ui, sans-serif" },
-    radii: { soft: "12px", rounded: "8px" },
+    radii: { soft: "16px", rounded: "10px" },
   },
   dark: {
     key: "dark",
     displayName: "Dark",
-    colors: { primary: "#e2e8f0", accent: "#fb923c", background: "#0b1220", surface: "#0f1724", text: "#e2e8f0" },
+    colors: { primary: "#e5e7eb", accent: "#f59e0b", background: "#030712", surface: "#0f172a", text: "#e5e7eb" },
     fonts: { heading: "Inter, system-ui, sans-serif", body: "Inter, system-ui, sans-serif" },
-    radii: { soft: "12px", rounded: "8px" },
+    radii: { soft: "16px", rounded: "10px" },
   },
   luxury: {
     key: "luxury",
     displayName: "Luxury",
-    colors: { primary: "#0b0b0b", accent: "#d4af37", background: "#050505", surface: "#0b0b0b", text: "#f7f3ea" },
-    fonts: { heading: "Georgia, serif", body: "Inter, system-ui, sans-serif" },
-    radii: { soft: "16px", rounded: "10px" },
+    colors: { primary: "#f8fafc", accent: "#facc15", background: "#020617", surface: "#0f172a", text: "#f8fafc" },
+    fonts: { heading: "Playfair Display, Georgia, serif", body: "Inter, system-ui, sans-serif" },
+    radii: { soft: "20px", rounded: "12px" },
   },
   startup: {
     key: "startup",
     displayName: "Startup",
-    colors: { primary: "#0f172a", accent: "#7c3aed", background: "#ffffff", surface: "#f8fafc", text: "#0f172a" },
-    fonts: { heading: "Poppins, system-ui, sans-serif", body: "Inter, system-ui, sans-serif" },
-    radii: { soft: "12px", rounded: "9999px" },
+    colors: { primary: "#0f172a", accent: "#ec4899", background: "#ffffff", surface: "#fdf2f8", text: "#0f172a" },
+    fonts: { heading: "Poppins, sans-serif", body: "Inter, system-ui, sans-serif" },
+    radii: { soft: "14px", rounded: "999px" },
   },
   warm: {
     key: "warm",
     displayName: "Warm",
-    colors: { primary: "#422006", accent: "#f97316", background: "#fff7ed", surface: "#fffaf0", text: "#422006" },
-    fonts: { heading: "Merriweather, serif", body: "Inter, system-ui, sans-serif" },
-    radii: { soft: "12px", rounded: "8px" },
+    colors: { primary: "#431407", accent: "#f97316", background: "#fff7ed", surface: "#ffedd5", text: "#431407" },
+    fonts: { heading: "Merriweather, Georgia, serif", body: "Inter, system-ui, sans-serif" },
+    radii: { soft: "16px", rounded: "10px" },
   },
 };
 
@@ -156,20 +210,26 @@ export interface DesignFix {
   fix: string;
 }
 
-const industryRules: Array<{ match: RegExp; template: TemplateKey; theme: ThemeKey }> = [
-  { match: /agency|creative|design|marketing|media|startup|software|technology|tech/i, template: "creative", theme: "startup" },
-  { match: /education|training|academy|school|coaching|tutoring|learning/i, template: "corporate", theme: "warm" },
-  { match: /restaurant|food|cafe|fitness|gym|salon|spa|wellness|local|retail|home services|services/i, template: "minimal", theme: "warm" },
-  { match: /finance|legal|consulting|medical|health|real estate|insurance|construction/i, template: "corporate", theme: "dark" },
-  { match: /fashion|luxury|jewelry|boutique|hotel|hospitality/i, template: "creative", theme: "luxury" },
+const industryRules: Array<{ match: RegExp; template: TemplateKey; themes: ThemeKey[] }> = [
+  { match: /agency|creative|design|marketing|media/i, template: "creative", themes: ["startup", "dark", "luxury"] },
+  { match: /startup|software|technology|tech/i, template: "bold", themes: ["startup", "dark", "warm"] },
+  { match: /education|training|academy|school|coaching|tutoring|learning/i, template: "corporate", themes: ["warm", "light", "startup"] },
+  { match: /restaurant|food|cafe|fitness|gym|salon|spa|wellness|local|retail|home services|services/i, template: "minimal", themes: ["warm", "light", "dark"] },
+  { match: /finance|legal|consulting|medical|health|real estate|insurance|construction/i, template: "corporate", themes: ["dark", "light", "luxury"] },
+  { match: /fashion|luxury|jewelry|boutique|hotel|hospitality/i, template: "elegant", themes: ["luxury", "dark", "warm"] },
+  { match: /kids|children|toys|family|events|party/i, template: "playful", themes: ["startup", "warm", "light"] },
+  { match: /engineering|software development|data science|ai|machine learning/i, template: "technical", themes: ["dark", "startup", "luxury"] },
+  { match: /gardening|outdoors|eco|environment|sustainability|organic/i, template: "nature", themes: ["warm", "light", "luxury"] },
 ];
 
 function suggestFromIndustry(industry?: string, businessType?: string): SuggestedLayoutWithRationale {
   const normalized = `${industry || ""} ${businessType || ""}`.trim();
   const rule = industryRules.find((item) => item.match.test(normalized));
   const template: TemplateKey = rule?.template || "corporate";
-  const theme: ThemeKey = rule?.theme || "light";
-  const heroVariant: HeroVariant = getTemplate(template).heroVariant[0] || "centered";
+  const themes: ThemeKey[] = rule?.themes || ["light", "dark", "luxury", "startup", "warm"];
+  const theme: ThemeKey = getRandomItem(themes);
+  const heroVariants = getTemplate(template).heroVariant;
+  const heroVariant: HeroVariant = getRandomItem(heroVariants);
 
   return {
     templateKey: getLegacyTemplateKey(template),
@@ -198,37 +258,49 @@ export function suggestLayoutFromAnalysis(
   }
 
   if (conversion >= 2 || (conversion >= 1 && trust >= 1)) {
+    const templateKey = "modern-business";
+    const template: TemplateKey = "corporate";
+    const heroVariants = getTemplate(template).heroVariant;
     return {
-      templateKey: "modern-business",
-      themeKey: "startup",
-      heroVariant: "centered",
+      templateKey,
+      themeKey: getRandomItem(["startup", "light", "warm"]),
+      heroVariant: getRandomItem(heroVariants),
       rationale: "Clear CTAs and conversion-focused layout to fix weak calls-to-action",
     };
   }
 
   if (trust >= 2 || trust >= 1) {
+    const templateKey = "modern-business";
+    const template: TemplateKey = "corporate";
+    const heroVariants = getTemplate(template).heroVariant;
     return {
-      templateKey: "modern-business",
-      themeKey: "light",
-      heroVariant: "left-image",
+      templateKey,
+      themeKey: getRandomItem(["light", "dark", "luxury"]),
+      heroVariant: getRandomItem(heroVariants),
       rationale: "Professional, trust-building design with strong social proof",
     };
   }
 
   if (performance >= 1) {
+    const templateKey = "local-bright";
+    const template: TemplateKey = "minimal";
+    const heroVariants = getTemplate(template).heroVariant;
     return {
-      templateKey: "minimal-fast",
-      themeKey: "light",
-      heroVariant: "centered",
+      templateKey,
+      themeKey: getRandomItem(["light", "warm"]),
+      heroVariant: getRandomItem(heroVariants),
       rationale: "Clean, fast-loading minimal layout for better performance",
     };
   }
 
   if (conversion >= 1) {
+    const templateKey = "modern-business";
+    const template: TemplateKey = "corporate";
+    const heroVariants = getTemplate(template).heroVariant;
     return {
-      templateKey: "modern-business",
-      themeKey: "warm",
-      heroVariant: "centered",
+      templateKey,
+      themeKey: getRandomItem(["warm", "startup", "light"]),
+      heroVariant: getRandomItem(heroVariants),
       rationale: "Warm, inviting design with prominent contact actions",
     };
   }
@@ -243,23 +315,45 @@ export function suggestAlternativeLayoutFromAnalysis(
 ): SuggestedLayoutWithRationale {
   const recommended = suggestLayoutFromAnalysis(industry, businessType, websiteObservations);
 
-  const alternatives: Record<LegacyTemplateKey, { templateKey: LegacyTemplateKey; themeKey: ThemeKey }> = {
-    "modern-business": { templateKey: "premium-dark", themeKey: "dark" },
-    "premium-dark": { templateKey: "local-bright", themeKey: "warm" },
-    "local-bright": { templateKey: "modern-business", themeKey: "startup" },
-    "minimal-fast": { templateKey: "premium-dark", themeKey: "luxury" },
-    "ecommerce-store": { templateKey: "premium-dark", themeKey: "dark" },
+  const alternatives: Record<LegacyTemplateKey, { templateKey: LegacyTemplateKey; themes: ThemeKey[] }> = {
+    "modern-business": { templateKey: "premium-dark", themes: ["dark", "luxury", "startup"] },
+    "premium-dark": { templateKey: "local-bright", themes: ["warm", "light", "startup"] },
+    "local-bright": { templateKey: "modern-business", themes: ["startup", "light", "warm"] },
+    "minimal-fast": { templateKey: "premium-dark", themes: ["luxury", "dark", "startup"] },
+    "ecommerce-store": { templateKey: "premium-dark", themes: ["dark", "luxury", "warm"] },
+    "bold-edge": { templateKey: "elegant-classic", themes: ["luxury", "light", "warm"] },
+    "elegant-classic": { templateKey: "playful-fun", themes: ["startup", "light", "warm"] },
+    "playful-fun": { templateKey: "technical-pro", themes: ["dark", "light", "luxury"] },
+    "technical-pro": { templateKey: "nature-green", themes: ["warm", "light", "luxury"] },
+    "nature-green": { templateKey: "bold-edge", themes: ["dark", "luxury", "startup"] },
   };
 
   const alt = alternatives[recommended.templateKey] || {
     templateKey: "premium-dark" as LegacyTemplateKey,
-    themeKey: "dark" as ThemeKey,
+    themes: ["dark", "luxury", "startup"] as ThemeKey[],
   };
+  
+  const templateKey = alt.templateKey;
+  // Map legacy template key back to TemplateKey to get hero variants
+  const legacyToTemplate: Record<LegacyTemplateKey, TemplateKey> = {
+    "modern-business": "corporate",
+    "premium-dark": "creative",
+    "local-bright": "minimal",
+    "minimal-fast": "minimal",
+    "ecommerce-store": "ecommerce",
+    "bold-edge": "bold",
+    "elegant-classic": "elegant",
+    "playful-fun": "playful",
+    "technical-pro": "technical",
+    "nature-green": "nature",
+  };
+  const template = legacyToTemplate[templateKey];
+  const heroVariants = getTemplate(template).heroVariant;
 
   return {
-    templateKey: alt.templateKey,
-    themeKey: alt.themeKey,
-    heroVariant: "large-visual",
+    templateKey,
+    themeKey: getRandomItem(alt.themes),
+    heroVariant: getRandomItem(heroVariants),
     rationale: "Bold alternative style for comparison",
   };
 }
@@ -288,8 +382,10 @@ export function suggestLayoutFor(industry?: string, businessType?: string): Sugg
   const normalized = `${industry || ""} ${businessType || ""}`.trim();
   const rule = industryRules.find((item) => item.match.test(normalized));
   const template: TemplateKey = rule?.template || "corporate";
-  const theme: ThemeKey = rule?.theme || "light";
-  const heroVariant: HeroVariant = getTemplate(template).heroVariant[0] || "centered";
+  const themes: ThemeKey[] = rule?.themes || ["light", "dark", "luxury", "startup", "warm"];
+  const theme: ThemeKey = getRandomItem(themes);
+  const heroVariants = getTemplate(template).heroVariant;
+  const heroVariant: HeroVariant = getRandomItem(heroVariants);
 
   return {
     templateKey: getLegacyTemplateKey(template),
@@ -304,33 +400,33 @@ export function suggestAlternativeLayoutFor(industry?: string, businessType?: st
   const recommendedTemplate: TemplateKey = rule?.template || "corporate";
   
   // Pick an alternative template that's different from recommended (avoid ecommerce for most)
-  const allTemplates: TemplateKey[] = ["corporate", "creative", "minimal"];
+  const allTemplates: TemplateKey[] = ["corporate", "creative", "minimal", "bold", "elegant", "playful", "technical", "nature"];
   const alternativeTemplates = allTemplates.filter(t => t !== recommendedTemplate);
-  const alternativeTemplate = alternativeTemplates[0] || "creative";
+  const alternativeTemplate = alternativeTemplates.length ? getRandomItem(alternativeTemplates) : "creative";
   
   // Pick an alternative theme that creates contrast
-  const recommendedTheme: ThemeKey = rule?.theme || "light";
+  const recommendedTheme: ThemeKey = rule?.themes ? getRandomItem(rule.themes) : "light";
   
   // Choose a contrasting theme
-  let alternativeTheme: ThemeKey;
+  let alternativeThemes: ThemeKey[];
   if (recommendedTheme === "light") {
-    alternativeTheme = "dark";
+    alternativeThemes = ["dark", "luxury"];
   } else if (recommendedTheme === "dark") {
-    alternativeTheme = "light";
+    alternativeThemes = ["light", "startup", "warm"];
   } else if (recommendedTheme === "luxury") {
-    alternativeTheme = "startup";
+    alternativeThemes = ["startup", "light", "warm"];
   } else if (recommendedTheme === "startup") {
-    alternativeTheme = "luxury";
-  } else {
-    alternativeTheme = "dark";
+    alternativeThemes = ["luxury", "dark", "warm"];
+  } else { // warm
+    alternativeThemes = ["dark", "luxury", "startup"];
   }
   
-  const heroVariant: HeroVariant = getTemplate(alternativeTemplate).heroVariant[0] || "centered";
+  const heroVariants = getTemplate(alternativeTemplate).heroVariant;
 
   return {
     templateKey: getLegacyTemplateKey(alternativeTemplate),
-    themeKey: alternativeTheme,
-    heroVariant,
+    themeKey: getRandomItem(alternativeThemes),
+    heroVariant: getRandomItem(heroVariants),
   };
 }
 

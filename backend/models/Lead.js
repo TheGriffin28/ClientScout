@@ -80,6 +80,7 @@ const leadSchema = new mongoose.Schema(
         enum: ["light", "dark", "luxury", "startup", "warm"],
         default: "light",
       },
+      design: mongoose.Schema.Types.Mixed, // AI-generated design recipe
       designRationale: String,
       analysisSnapshot: {
         websiteObservations: {

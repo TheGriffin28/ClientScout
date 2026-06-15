@@ -12,6 +12,11 @@ const TEMPLATE_PREVIEW: Record<
   "local-bright": { bg: "#fffbeb", accent: "#10b981", layout: "stack" },
   "minimal-fast": { bg: "#f1f5f9", accent: "#64748b", layout: "center" },
   "ecommerce-store": { bg: "#fef2f2", accent: "#ef4444", layout: "split" },
+  "bold-edge": { bg: "#020617", accent: "#f97316", layout: "center" },
+  "elegant-classic": { bg: "#1f2937", accent: "#d4af37", layout: "split" },
+  "playful-fun": { bg: "#fef3c7", accent: "#f43f5e", layout: "stack" },
+  "technical-pro": { bg: "#0b1120", accent: "#0ea5e9", layout: "split" },
+  "nature-green": { bg: "#f0fdf4", accent: "#16a34a", layout: "stack" },
 };
 
 function TemplateWireframe({

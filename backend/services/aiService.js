@@ -254,51 +254,75 @@ export const generateWebsiteLayout = async (
       - Services must match the business category.`;
 
     const prompt = `
-      You are a senior conversion copywriter for local businesses.
-      Generate website CONTENT ONLY for a REDESIGNED website. Do not generate CSS, HTML, or layout instructions.
- 
+      You are a senior web designer and conversion copywriter for local businesses.
+      Generate a complete website DESIGN RECIPE and CONTENT for a unique, non-generic website.
+
       Business Name: ${businessName} 
       Industry: ${industry || "General"} 
       Business Type: ${businessType || "N/A"} 
       Pain Points: ${painPoints?.join(", ") || "N/A"} 
-      Strategic Insight: ${aiSummary || "N/A"} 
+      Strategic Insight: ${aiSummary || "N/A"}
 
       ${auditSection}
- 
+
       Rules:
       ${contentRules}
-      - Output concise sales-ready copy.
+      - Create a completely unique design that feels custom to the business, not like a template.
+      - Choose colors, fonts, and layout that match the business industry and vibe.
       - pitchMessage should mention we analyzed their situation${hasWebsite ? " and their current website" : ""} and created an improved design concept.
- 
+
       Return ONLY valid JSON. Do not include markdown or extra text. 
- 
+
       The JSON object must follow this exact structure: 
- 
+
       { 
-        "hero": {
-          "headline": "Benefit-driven headline with business name",
-          "tagline": "One short supporting line",
-          "primaryCta": "Call Now / Book Now",
-          "secondaryCta": "Get Free Quote / WhatsApp Us"
+        "content": {
+          "hero": {
+            "headline": "Benefit-driven headline with business name",
+            "tagline": "One short supporting line",
+            "primaryCta": "Call Now / Book Now",
+            "secondaryCta": "Get Free Quote / WhatsApp Us"
+          },
+          "about": {
+            "title": "About heading",
+            "description": "80-120 words trust-building description"
+          }, 
+          "services": [
+            { "name": "Service 1", "description": "1-2 lines" },
+            { "name": "Service 2", "description": "1-2 lines" },
+            { "name": "Service 3", "description": "1-2 lines" }
+          ],
+          "testimonials": [
+            { "name": "Customer 1", "quote": "Natural positive review rewrite." },
+            { "name": "Customer 2", "quote": "Natural positive review rewrite." },
+            { "name": "Customer 3", "quote": "Natural positive review rewrite." }
+          ],
+          "contact": {
+            "phone": "Use placeholder if not known",
+            "address": "Use placeholder if not known",
+            "ctaText": "Call / WhatsApp CTA"
+          }
         },
-        "about": {
-          "title": "About heading",
-          "description": "80-120 words trust-building description"
-        }, 
-        "services": [
-          { "name": "Service 1", "description": "1-2 lines" },
-          { "name": "Service 2", "description": "1-2 lines" },
-          { "name": "Service 3", "description": "1-2 lines" }
-        ],
-        "testimonials": [
-          { "name": "Customer 1", "quote": "Natural positive review rewrite." },
-          { "name": "Customer 2", "quote": "Natural positive review rewrite." },
-          { "name": "Customer 3", "quote": "Natural positive review rewrite." }
-        ],
-        "contact": {
-          "phone": "Use placeholder if not known",
-          "address": "Use placeholder if not known",
-          "ctaText": "Call / WhatsApp CTA"
+        "design": {
+          "colors": {
+            "primary": "#hexcolor",
+            "secondary": "#hexcolor",
+            "accent": "#hexcolor",
+            "background": "#hexcolor",
+            "surface": "#hexcolor",
+            "text": "#hexcolor"
+          },
+          "typography": {
+            "headingFont": "Font Name (e.g., 'Playfair Display', 'Poppins', 'Inter')",
+            "bodyFont": "Font Name (e.g., 'Inter', 'Roboto', 'Open Sans')"
+          },
+          "layout": {
+            "sections": ["hero", "stats", "features", "about", "services", "testimonials", "cta", "contact"],
+            "heroVariant": "left-image" | "large-visual" | "centered" | "split",
+            "cardStyle": "grid" | "overlap" | "list" | "cards",
+            "spacing": "compact" | "regular" | "spacious"
+          },
+          "aesthetic": "modern" | "classic" | "bold" | "minimal" | "playful" | "elegant" | "technical" | "nature"
         },
         "pitchMessage": "A short outreach message saying we created this website preview and asking if they want to make it live."
       } 

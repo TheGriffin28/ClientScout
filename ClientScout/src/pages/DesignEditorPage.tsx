@@ -3,7 +3,7 @@ import toast from "react-hot-toast";
 import { Toaster } from "react-hot-toast";
 import WebsitePreview from "../components/leads/WebsitePreview";
 import { updateLead, LayoutVersion } from "../services/leadService";
-import { LegacyTemplateKey, ThemeKey } from "../services/templateEngine";
+import { LegacyTemplateKey, ThemeKey, HeroVariant, getTemplate } from "../services/templateEngine";
 import {
   EDITOR_DATA_KEY,
   EDITOR_RESULT_KEY,
@@ -15,10 +15,28 @@ import {
 import DesignStylePickers from "../components/leads/DesignStylePickers";
 import { FaCheck, FaCog, FaTimes } from "react-icons/fa";
 
+function getRandomItem<T>(array: T[]): T {
+  return array[Math.floor(Math.random() * array.length)];
+}
+
+const legacyToTemplateMap: Record<LegacyTemplateKey, any> = {
+  "modern-business": "corporate",
+  "premium-dark": "creative",
+  "local-bright": "minimal",
+  "minimal-fast": "minimal",
+  "ecommerce-store": "ecommerce",
+  "bold-edge": "bold",
+  "elegant-classic": "elegant",
+  "playful-fun": "playful",
+  "technical-pro": "technical",
+  "nature-green": "nature",
+};
+
 export default function DesignEditorPage() {
   const [editorData, setEditorData] = useState<DesignEditorData | null>(null);
   const [templateKey, setTemplateKey] = useState<LegacyTemplateKey>("modern-business");
   const [themeKey, setThemeKey] = useState<ThemeKey>("light");
+  const [heroVariant, setHeroVariant] = useState<HeroVariant>("left-image");
   const [panelOpen, setPanelOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -29,12 +47,23 @@ export default function DesignEditorPage() {
     try {
       const data = JSON.parse(raw) as DesignEditorData;
       setEditorData(data);
-      setTemplateKey(normalizeTemplateKey(data.version.templateKey));
+      const normalizedTemplateKey = normalizeTemplateKey(data.version.templateKey);
+      setTemplateKey(normalizedTemplateKey);
       setThemeKey(data.version.themeKey || "light");
+      setHeroVariant(data.version.heroVariant || "left-image");
     } catch {
       toast.error("Failed to load editor data.");
     }
   }, []);
+
+  // When template changes, get a random hero variant for that template
+  useEffect(() => {
+    const structuralKey = legacyToTemplateMap[templateKey];
+    const template = getTemplate(structuralKey);
+    if (template) {
+      setHeroVariant(getRandomItem(template.heroVariant));
+    }
+  }, [templateKey]);
 
   const previewLayout = useMemo<LayoutVersion | null>(() => {
     if (!editorData) return null;
@@ -42,13 +71,16 @@ export default function DesignEditorPage() {
       ...editorData.version,
       templateKey,
       themeKey,
+      heroVariant,
+      design: undefined, // Clear AI design when manually changing template/theme
     };
-  }, [editorData, templateKey, themeKey]);
+  }, [editorData, templateKey, themeKey, heroVariant]);
 
   const hasChanges =
     !!editorData &&
     (templateKey !== editorData.version.templateKey ||
-      themeKey !== (editorData.version.themeKey || "light"));
+      themeKey !== (editorData.version.themeKey || "light") ||
+      heroVariant !== editorData.version.heroVariant);
 
   const handleConfirm = async () => {
     if (!editorData || !previewLayout) return;
@@ -59,12 +91,15 @@ export default function DesignEditorPage() {
         ...editorData.version,
         templateKey,
         themeKey,
+        heroVariant,
       };
 
       await updateLead(editorData.leadId, {
         generatedLayout: {
           templateKey: updatedVersion.templateKey,
           themeKey: updatedVersion.themeKey,
+          heroVariant: updatedVersion.heroVariant,
+          design: undefined, // Clear AI design when saving manual template/theme selection
           content: ensureLayoutContent(updatedVersion.content, editorData.businessName),
           pitchMessage: updatedVersion.pitchMessage,
           previewUrl: updatedVersion.previewUrl,
@@ -117,7 +152,7 @@ export default function DesignEditorPage() {
       <Toaster position="top-right" />
 
       {/* Live website preview */}
-      <div key={`${templateKey}-${themeKey}`} className="preview-fade-switch">
+      <div key={`${templateKey}-${themeKey}-${heroVariant}`} className="preview-fade-switch">
         <WebsitePreview
           layout={previewLayout}
           businessName={editorData.businessName}

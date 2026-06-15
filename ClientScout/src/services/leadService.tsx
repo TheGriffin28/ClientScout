@@ -1,5 +1,27 @@
 import api from "./api";
-import { ThemeKey, LegacyTemplateKey } from "./templateEngine";
+import { ThemeKey, LegacyTemplateKey, HeroVariant } from "./templateEngine";
+
+export interface DesignRecipe {
+  colors: {
+    primary: string;
+    secondary: string;
+    accent: string;
+    background: string;
+    surface: string;
+    text: string;
+  };
+  typography: {
+    headingFont: string;
+    bodyFont: string;
+  };
+  layout: {
+    sections: string[];
+    heroVariant: string;
+    cardStyle: string;
+    spacing: string;
+  };
+  aesthetic: string;
+}
 
 export interface LayoutVersion {
   id: string;
@@ -7,6 +29,8 @@ export interface LayoutVersion {
   description: string;
   templateKey: LegacyTemplateKey;
   themeKey?: ThemeKey;
+  heroVariant?: HeroVariant;
+  design?: DesignRecipe;
   content: {
     hero: {
       headline: string;
@@ -70,6 +94,7 @@ export interface Lead {
   generatedLayout?: {
     templateKey: LegacyTemplateKey;
     themeKey?: ThemeKey;
+    heroVariant?: HeroVariant;
     content: {
       hero: {
         headline: string;

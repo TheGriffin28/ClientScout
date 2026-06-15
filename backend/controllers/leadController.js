@@ -784,7 +784,7 @@ export const generateLayout = async (req, res) => {
       lead.websiteObservations
     );
 
-    const content = await generateWebsiteLayout(
+    const aiResult = await generateWebsiteLayout(
       lead.businessName,
       lead.industry,
       lead.businessType,
@@ -793,6 +793,10 @@ export const generateLayout = async (req, res) => {
       lead.websiteObservations,
       hasWebsite
     );
+
+    // Extract content and design from AI result
+    const content = aiResult.content || aiResult;
+    const design = aiResult.design || undefined;
 
     const fallbackServices = mapCategoryServices(lead.industry).map((name) => ({
       name,
@@ -833,6 +837,7 @@ export const generateLayout = async (req, res) => {
     lead.generatedLayout = {
       templateKey,
       themeKey,
+      design, // Save AI-generated design recipe
       designRationale: layoutSuggestion.rationale,
       analysisSnapshot: hasAnalysis
         ? {
@@ -844,7 +849,7 @@ export const generateLayout = async (req, res) => {
         : undefined,
       content: safeContent,
       pitchMessage:
-        content.pitchMessage ||
+        aiResult.pitchMessage || content.pitchMessage ||
         (fixesSummary
           ? `Hi ${lead.businessName} team, we reviewed your website and noticed ${fixesSummary}. We created an improved design concept to fix these issues. Would you like us to make it live?`
           : `Hi ${lead.businessName} team, we noticed your business could benefit from a stronger online presence. We created a ready website preview for you. Would you like us to make it live?`),
