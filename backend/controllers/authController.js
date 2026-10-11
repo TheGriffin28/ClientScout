@@ -87,6 +87,9 @@ const formatUserResponse = async (user, includeToken = null) => {
       port: user.smtpSettings?.port || 465,
       fromName: user.smtpSettings?.fromName || "",
       hasPassword: Boolean(user.smtpSettings?.pass),
+      maskedPass: user.smtpSettings?.pass
+        ? `${user.smtpSettings.pass.slice(0, 4)} •••• •••• ${user.smtpSettings.pass.slice(-4)}`
+        : "",
     },
     whatsappSettings: {
       apiKey: user.whatsappSettings?.apiKey || "",
@@ -362,6 +365,7 @@ export const updateProfile = async (req, res) => {
           port: Number(smtpSettings.port) || user.smtpSettings?.port || 465,
           fromName: smtpSettings.fromName !== undefined ? smtpSettings.fromName.trim() : user.smtpSettings?.fromName,
         };
+        user.markModified("smtpSettings");
       }
 
       if (whatsappSettings) {
@@ -369,6 +373,7 @@ export const updateProfile = async (req, res) => {
           apiKey: whatsappSettings.apiKey !== undefined && whatsappSettings.apiKey.trim() ? whatsappSettings.apiKey.trim() : user.whatsappSettings?.apiKey,
           apiUrl: whatsappSettings.apiUrl !== undefined ? whatsappSettings.apiUrl.trim() : user.whatsappSettings?.apiUrl,
         };
+        user.markModified("whatsappSettings");
       }
 
 
@@ -508,7 +513,14 @@ export const testSmtp = async (req, res) => {
     const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    const testConfig = req.body.smtpSettings ? { ...user.toObject(), smtpSettings: req.body.smtpSettings } : user;
+    const mergedSmtp = {
+      user: req.body.smtpSettings?.user?.trim() || user.smtpSettings?.user,
+      pass: req.body.smtpSettings?.pass?.trim() || user.smtpSettings?.pass,
+      host: req.body.smtpSettings?.host || user.smtpSettings?.host || "smtp.gmail.com",
+      port: Number(req.body.smtpSettings?.port) || user.smtpSettings?.port || 465,
+      fromName: req.body.smtpSettings?.fromName?.trim() || user.smtpSettings?.fromName,
+    };
+    const testConfig = { ...user.toObject(), smtpSettings: mergedSmtp };
 
     await sendSmtpEmail({
       to: user.email,
@@ -541,7 +553,11 @@ export const testWhatsApp = async (req, res) => {
       return res.status(400).json({ message: "Mobile number is required to send test WhatsApp message" });
     }
 
-    const testConfig = req.body.whatsappSettings ? { ...user.toObject(), whatsappSettings: req.body.whatsappSettings } : user;
+    const mergedWhatsApp = {
+      apiUrl: req.body.whatsappSettings?.apiUrl?.trim() || user.whatsappSettings?.apiUrl || "https://3bgvriotyazubuqc8a6sclta.140.238.254.100.sslip.io/api/send",
+      apiKey: req.body.whatsappSettings?.apiKey?.trim() || user.whatsappSettings?.apiKey,
+    };
+    const testConfig = { ...user.toObject(), whatsappSettings: mergedWhatsApp };
 
     const result = await sendWhatsAppMessage({
       phone,

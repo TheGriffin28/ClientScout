@@ -32,6 +32,7 @@ interface User {
     port?: number;
     fromName?: string;
     hasPassword?: boolean;
+    maskedPass?: string;
   };
   whatsappSettings?: {
     apiKey?: string;

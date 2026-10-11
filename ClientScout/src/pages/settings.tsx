@@ -46,6 +46,8 @@ const Settings = () => {
     "https://3bgvriotyazubuqc8a6sclta.140.238.254.100.sslip.io/api/send"
   );
   const [whatsappApiKey, setWhatsappApiKey] = useState("");
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [isChangingWhatsAppKey, setIsChangingWhatsAppKey] = useState(false);
 
   const [isSavingOutreach, setIsSavingOutreach] = useState(false);
   const [isTestingSmtp, setIsTestingSmtp] = useState(false);
@@ -120,7 +122,9 @@ const Settings = () => {
         },
       });
       await refreshUser();
-      setSmtpPass(""); // Clear password field after saving
+      setSmtpPass("");
+      setIsChangingPassword(false);
+      setIsChangingWhatsAppKey(false);
       toast.success("Outreach channels configured successfully!");
     } catch (error: any) {
       toast.error(
@@ -401,23 +405,72 @@ const Settings = () => {
                           rel="noreferrer"
                           className="flex items-center gap-1 text-xs text-blue-600 hover:underline dark:text-blue-400"
                         >
-                          Generate App Password <FaExternalLinkAlt className="h-2.5 w-2.5" />
+                          Generate New <FaExternalLinkAlt className="h-2.5 w-2.5" />
                         </a>
                       </div>
-                      <input
-                        type="password"
-                        placeholder={
-                          user?.smtpSettings?.hasPassword
-                            ? "•••••••••••••••• (Leave blank to keep existing)"
-                            : "Enter 16-character Google App Password (e.g. abcd efgh ijkl mnop)"
-                        }
-                        value={smtpPass}
-                        onChange={(e) => setSmtpPass(e.target.value)}
-                        className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-mono focus:border-blue-500 focus:outline-none dark:border-strokedark dark:bg-boxdark dark:text-white"
-                      />
-                      <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                        Note: Google requires a dedicated App Password instead of your regular Gmail login password. Enable 2-Step Verification on Google, then generate an App Password with app name &quot;ClientScout&quot;.
-                      </p>
+
+                      {user?.smtpSettings?.hasPassword && !isChangingPassword ? (
+                        <div className="flex flex-col gap-3 rounded-lg border border-emerald-200 bg-emerald-50/70 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-emerald-900/50 dark:bg-emerald-950/20">
+                          <div className="flex items-start gap-3">
+                            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-400">
+                              <FaCheckCircle className="h-4 w-4" />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-semibold text-emerald-900 dark:text-emerald-200">
+                                  App Password Saved &amp; Active
+                                </span>
+                                <span className="rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300">
+                                  Configured
+                                </span>
+                              </div>
+                              <p className="mt-1 font-mono text-xs text-gray-600 dark:text-gray-300">
+                                Saved Key: <span className="rounded bg-white/90 px-1.5 py-0.5 font-bold text-gray-900 shadow-sm dark:bg-gray-800 dark:text-white">{user.smtpSettings?.maskedPass || "•••• •••• •••• ••••"}</span>
+                              </p>
+                              <p className="mt-1 text-xs text-emerald-700 dark:text-emerald-400">
+                                Direct cold pitches will be sent securely from your personal Gmail address.
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsChangingPassword(true);
+                              setSmtpPass("");
+                            }}
+                            className="inline-flex shrink-0 items-center justify-center rounded-lg border border-emerald-300 bg-white px-3.5 py-1.5 text-xs font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-50 dark:border-emerald-800 dark:bg-boxdark dark:text-emerald-200 dark:hover:bg-gray-800"
+                          >
+                            Change Password
+                          </button>
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="relative">
+                            <input
+                              type="password"
+                              placeholder="Enter 16-character Google App Password (e.g. abcd efgh ijkl mnop)"
+                              value={smtpPass}
+                              onChange={(e) => setSmtpPass(e.target.value)}
+                              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 pr-16 text-sm font-mono focus:border-blue-500 focus:outline-none dark:border-strokedark dark:bg-boxdark dark:text-white"
+                            />
+                            {user?.smtpSettings?.hasPassword && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setIsChangingPassword(false);
+                                  setSmtpPass("");
+                                }}
+                                className="absolute right-2 top-2 rounded px-2 py-0.5 text-xs text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-300"
+                              >
+                                Cancel
+                              </button>
+                            )}
+                          </div>
+                          <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                            Note: Google requires a dedicated App Password instead of your regular Gmail login password. Enable 2-Step Verification on Google, then generate an App Password with app name &quot;ClientScout&quot;.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -475,20 +528,53 @@ const Settings = () => {
                       <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
                         API Key (x-api-key)
                       </label>
-                      <input
-                        type="text"
-                        placeholder={
-                          user?.whatsappSettings?.hasApiKey
-                            ? "•••••••• (Configured - enter new key to override)"
-                            : "Enter custom WhatsApp API key"
-                        }
-                        value={whatsappApiKey}
-                        onChange={(e) => setWhatsappApiKey(e.target.value)}
-                        className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-mono focus:border-blue-500 focus:outline-none dark:border-strokedark dark:bg-boxdark dark:text-white"
-                      />
-                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                        Leave blank to use the shared system WhatsApp gateway.
-                      </p>
+                      {user?.whatsappSettings?.hasApiKey && !isChangingWhatsAppKey ? (
+                        <div className="flex flex-col gap-3 rounded-lg border border-emerald-200 bg-emerald-50/70 p-3 sm:flex-row sm:items-center sm:justify-between dark:border-emerald-900/50 dark:bg-emerald-950/20">
+                          <div className="flex items-center gap-2">
+                            <FaCheckCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                            <span className="text-sm font-medium text-emerald-900 dark:text-emerald-200">
+                              Custom API Key Configured &amp; Active
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsChangingWhatsAppKey(true);
+                              setWhatsappApiKey("");
+                            }}
+                            className="inline-flex shrink-0 items-center justify-center rounded-lg border border-emerald-300 bg-white px-3 py-1 text-xs font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-50 dark:border-emerald-800 dark:bg-boxdark dark:text-emerald-200 dark:hover:bg-gray-800"
+                          >
+                            Change Key
+                          </button>
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="relative">
+                            <input
+                              type="text"
+                              placeholder="Enter custom WhatsApp API key"
+                              value={whatsappApiKey}
+                              onChange={(e) => setWhatsappApiKey(e.target.value)}
+                              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 pr-16 text-sm font-mono focus:border-blue-500 focus:outline-none dark:border-strokedark dark:bg-boxdark dark:text-white"
+                            />
+                            {user?.whatsappSettings?.hasApiKey && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setIsChangingWhatsAppKey(false);
+                                  setWhatsappApiKey("");
+                                }}
+                                className="absolute right-2 top-2 rounded px-2 py-0.5 text-xs text-gray-500 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-300"
+                              >
+                                Cancel
+                              </button>
+                            )}
+                          </div>
+                          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            Leave blank to use the shared system WhatsApp gateway.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
 
